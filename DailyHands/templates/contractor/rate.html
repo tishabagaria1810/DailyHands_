@@ -1,0 +1,128 @@
+{% extends 'contractor/base.html' %}
+
+{% block title %}Rate Agency - DailyHands{% endblock %}
+
+{% block extra_css %}
+<style>
+    .star-input {
+        display: flex;
+        flex-direction: row-reverse;
+        justify-content: flex-end;
+        gap: 0.5rem;
+    }
+    
+    .star-input input {
+        display: none;
+    }
+    
+    .star-input label {
+        font-size: 2.5rem;
+        color: #e2e8f0;
+        cursor: pointer;
+        transition: all 0.2s ease;
+    }
+    
+    .star-input label:hover,
+    .star-input label:hover ~ label,
+    .star-input input:checked ~ label {
+        color: #fbbf24;
+        transform: scale(1.1);
+    }
+    
+    .rating-display {
+        font-size: 2rem;
+    }
+    
+    .rating-display .bi-star-fill {
+        color: #fbbf24;
+    }
+    
+    .rating-display .bi-star {
+        color: #e2e8f0;
+    }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="page-header animate-fade-in">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('contractor_requests') }}">My Requests</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('contractor_request_detail', request_id=req.id) }}">{{ req.title }}</a></li>
+            <li class="breadcrumb-item active">Rate Agency</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-6 animate-fade-in" style="animation-delay: 0.1s;">
+        <div class="glass-card p-4">
+            <div class="text-center mb-4">
+                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mx-auto mb-3" 
+                     style="width: 80px; height: 80px; font-size: 2rem;">
+                    {{ req.agency_name[0] }}
+                </div>
+                <h4>{{ req.agency_name }}</h4>
+                <p class="text-muted">{{ req.title }}</p>
+            </div>
+            
+            {% if existing_rating %}
+            <div class="text-center">
+                <h5 class="mb-3">Your Rating</h5>
+                <div class="rating-display mb-3">
+                    {% for i in range(5) %}
+                        {% if i < existing_rating.rating %}
+                        <i class="bi bi-star-fill"></i>
+                        {% else %}
+                        <i class="bi bi-star"></i>
+                        {% endif %}
+                    {% endfor %}
+                </div>
+                {% if existing_rating.review %}
+                <p class="text-muted">"{{ existing_rating.review }}"</p>
+                {% endif %}
+                <div class="alert alert-info mt-3">
+                    <i class="bi bi-info-circle me-2"></i>You have already rated this agency
+                </div>
+                <a href="{{ url_for('contractor_request_detail', request_id=req.id) }}" class="btn btn-outline-custom">
+                    <i class="bi bi-arrow-left me-2"></i>Back to Request
+                </a>
+            </div>
+            {% else %}
+            <form method="POST">
+                <div class="text-center mb-4">
+                    <h5 class="mb-3">Rate your experience</h5>
+                    <div class="star-input">
+                        <input type="radio" name="rating" value="5" id="star5" required>
+                        <label for="star5"><i class="bi bi-star-fill"></i></label>
+                        <input type="radio" name="rating" value="4" id="star4">
+                        <label for="star4"><i class="bi bi-star-fill"></i></label>
+                        <input type="radio" name="rating" value="3" id="star3">
+                        <label for="star3"><i class="bi bi-star-fill"></i></label>
+                        <input type="radio" name="rating" value="2" id="star2">
+                        <label for="star2"><i class="bi bi-star-fill"></i></label>
+                        <input type="radio" name="rating" value="1" id="star1">
+                        <label for="star1"><i class="bi bi-star-fill"></i></label>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <label class="form-label fw-semibold">Write a review (optional)</label>
+                    <textarea class="form-control form-control-custom" name="review" rows="4" 
+                              placeholder="Share your experience with this agency..."></textarea>
+                </div>
+                
+                <div class="d-flex gap-3">
+                    <button type="submit" class="btn btn-primary-custom flex-grow-1">
+                        <i class="bi bi-send me-2"></i>Submit Rating
+                    </button>
+                    <a href="{{ url_for('contractor_request_detail', request_id=req.id) }}" class="btn btn-outline-custom">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

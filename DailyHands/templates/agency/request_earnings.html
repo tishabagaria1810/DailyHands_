@@ -1,0 +1,246 @@
+{% extends 'agency/base.html' %}
+
+{% block title %}Request Earnings - DailyHands{% endblock %}
+
+{% block page_content %}
+<div class="page-header animate-fade-in">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('agency_earnings') }}">Earnings</a></li>
+            <li class="breadcrumb-item active">{{ req.title }}</li>
+        </ol>
+    </nav>
+</div>
+
+<!-- Request Info -->
+<div class="glass-card p-4 mb-4 animate-fade-in">
+    <div class="d-flex justify-content-between align-items-start">
+        <div>
+            <h4>{{ req.title }}</h4>
+            <p class="text-muted mb-0">{{ req.description }}</p>
+        </div>
+        <span class="status-badge status-{{ req.status|lower }}">{{ req.status }}</span>
+    </div>
+    <hr>
+    <div class="row">
+        <div class="col-md-3">
+            <small class="text-muted">Contractor</small>
+            <div class="fw-semibold">{{ req.contractor_name }}</div>
+        </div>
+        <div class="col-md-3">
+            <small class="text-muted">Workers Assigned</small>
+            <div class="fw-semibold">{{ workers_summary|length }} / {{ req.workers_needed }}</div>
+        </div>
+        <div class="col-md-3">
+            <small class="text-muted">Wage Per Day</small>
+            <div class="fw-semibold">₹{{ req.wage_per_day }}</div>
+        </div>
+        <div class="col-md-3">
+            <small class="text-muted">Expected Duration</small>
+            <div class="fw-semibold">{{ req.expected_duration }} days</div>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3 animate-fade-in" style="animation-delay: 0.1s;">
+        <div class="stat-card">
+            <div class="stat-number">₹{{ total_paid }}</div>
+            <div class="stat-label">Total Contractor Paid</div>
+            <i class="bi bi-cash-stack stat-icon"></i>
+        </div>
+    </div>
+    <div class="col-md-3 animate-fade-in" style="animation-delay: 0.2s;">
+        <div class="stat-card green">
+            <div class="stat-number">₹{{ worker_payments|round(2) }}</div>
+            <div class="stat-label">Paid to Workers</div>
+            <i class="bi bi-people stat-icon"></i>
+        </div>
+    </div>
+    <div class="col-md-3 animate-fade-in" style="animation-delay: 0.3s;">
+        <div class="stat-card orange">
+            <div class="stat-number">₹{{ agency_commission|round(2) }}</div>
+            <div class="stat-label">Agency Commission (10%)</div>
+            <i class="bi bi-briefcase stat-icon"></i>
+        </div>
+    </div>
+    <div class="col-md-3 animate-fade-in" style="animation-delay: 0.4s;">
+        <div class="stat-card" style="background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);">
+            <div class="stat-number">₹{{ (agency_earn.penalty_earned or 0)|round(2) }}</div>
+            <div class="stat-label">Penalty Bonus</div>
+            <i class="bi bi-exclamation-triangle stat-icon"></i>
+        </div>
+    </div>
+</div>
+
+<!-- Worker-wise Earnings Graph -->
+<div class="glass-card p-4 mb-4 animate-fade-in" style="animation-delay: 0.5s;">
+    <h5 class="mb-4"><i class="bi bi-bar-chart me-2"></i>Worker-wise Performance</h5>
+    <img src="{{ url_for('request_earnings_graph', request_id=req.id) }}" alt="Worker Earnings Graph" class="img-fluid rounded" style="width: 100%;">
+</div>
+
+<div class="row g-4">
+    <!-- Worker Summary Table -->
+    <div class="col-lg-6 animate-fade-in" style="animation-delay: 0.6s;">
+        <div class="glass-card p-4">
+            <h5 class="mb-4"><i class="bi bi-people me-2"></i>Worker-wise Summary</h5>
+            
+            {% if workers_summary %}
+            <div class="table-responsive">
+                <table class="table table-custom mb-0">
+                    <thead>
+                        <tr>
+                            <th>Worker</th>
+                            <th>Skill</th>
+                            <th>Days Present</th>
+                            <th>Days Absent</th>
+                            <th>Earned</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for worker in workers_summary %}
+                        <tr>
+                            <td><strong>{{ worker.name }}</strong></td>
+                            <td><span class="badge bg-secondary">{{ worker.skill }}</span></td>
+                            <td><span class="badge bg-success">{{ worker.days_present }}</span></td>
+                            <td><span class="badge bg-danger">{{ worker.days_absent }}</span></td>
+                            <td class="text-success fw-semibold">₹{{ worker.total_earned }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                    <tfoot>
+                        <tr class="table-light">
+                            <td colspan="4"><strong>Total</strong></td>
+                            <td class="text-success fw-bold">₹{{ total_paid }}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted text-center">No workers assigned yet</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Attendance Records -->
+    <div class="col-lg-6 animate-fade-in" style="animation-delay: 0.7s;">
+        <div class="glass-card p-4">
+            <h5 class="mb-4"><i class="bi bi-calendar-check me-2"></i>Attendance Records</h5>
+            
+            {% if attendance_records %}
+            <div class="table-responsive" style="max-height: 400px; overflow-y: auto;">
+                <table class="table table-custom mb-0">
+                    <thead style="position: sticky; top: 0; background: white;">
+                        <tr>
+                            <th>Date</th>
+                            <th>Worker</th>
+                            <th>Status</th>
+                            <th>Earned</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for record in attendance_records %}
+                        <tr>
+                            <td>{{ record.date }}</td>
+                            <td>{{ record.worker_name }}</td>
+                            <td>
+                                {% if record.status == 'Present' %}
+                                <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Present</span>
+                                {% else %}
+                                <span class="badge bg-danger"><i class="bi bi-x-circle me-1"></i>Absent</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if record.status == 'Present' %}
+                                <span class="text-success">₹{{ record.daily_wage }}</span>
+                                {% else %}
+                                <span class="text-muted">₹0</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p class="text-muted text-center">No attendance records yet</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<!-- Final Summary (for completed requests) -->
+{% if req.status == 'Completed' %}
+<div class="glass-card p-4 mt-4 animate-fade-in" style="animation-delay: 0.8s; background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);">
+    <h5 class="mb-4"><i class="bi bi-check-circle me-2 text-success"></i>Project Completed - Final Summary</h5>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <h6 class="text-muted mb-3">Payment Breakdown</h6>
+            <div class="d-flex justify-content-between mb-2">
+                <span>Total Contractor Paid:</span>
+                <strong>₹{{ total_paid }}</strong>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+                <span>Workers Payment (90%):</span>
+                <strong class="text-success">₹{{ worker_payments|round(2) }}</strong>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+                <span>Agency Commission (10%):</span>
+                <strong class="text-warning">₹{{ agency_commission|round(2) }}</strong>
+            </div>
+            {% if agency_earn and agency_earn.penalty_earned > 0 %}
+            <div class="d-flex justify-content-between mb-2">
+                <span>Delay Penalty Bonus:</span>
+                <strong class="text-info">₹{{ agency_earn.penalty_earned }}</strong>
+            </div>
+            <hr>
+            <div class="d-flex justify-content-between">
+                <span class="fw-bold">Total Agency Earnings:</span>
+                <strong class="text-primary fs-5">₹{{ (agency_commission + agency_earn.penalty_earned)|round(2) }}</strong>
+            </div>
+            {% else %}
+            <hr>
+            <div class="d-flex justify-content-between">
+                <span class="fw-bold">Total Agency Earnings:</span>
+                <strong class="text-primary fs-5">₹{{ agency_commission|round(2) }}</strong>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="col-md-6">
+            <h6 class="text-muted mb-3">Project Stats</h6>
+            <div class="d-flex justify-content-between mb-2">
+                <span>Workers Assigned:</span>
+                <strong>{{ workers_summary|length }}</strong>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+                <span>Total Attendance Records:</span>
+                <strong>{{ attendance_records|length }}</strong>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+                <span>Expected Duration:</span>
+                <strong>{{ req.expected_duration }} days</strong>
+            </div>
+            {% if req.delay_days and req.delay_days > 0 %}
+            <div class="d-flex justify-content-between mb-2">
+                <span>Delay Days:</span>
+                <strong class="text-danger">{{ req.delay_days }} days</strong>
+            </div>
+            {% endif %}
+            <div class="d-flex justify-content-between mb-2">
+                <span>Completed On:</span>
+                <strong>{{ req.completed_at[:10] if req.completed_at else 'N/A' }}</strong>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<div class="mt-4">
+    <a href="{{ url_for('agency_earnings') }}" class="btn btn-outline-custom">
+        <i class="bi bi-arrow-left me-2"></i>Back to Earnings
+    </a>
+</div>
+{% endblock %}

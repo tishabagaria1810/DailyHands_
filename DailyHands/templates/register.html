@@ -1,0 +1,415 @@
+{% extends 'base.html' %}
+
+{% block title %}Register - DailyHands{% endblock %}
+
+{% block extra_css %}
+<style>
+    .auth-page {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 50%, #6366f1 100%);
+        padding: 2rem;
+    }
+
+    .auth-card {
+        background: white;
+        border-radius: 24px;
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+        overflow: hidden;
+        max-width: 500px;
+        width: 100%;
+        animation: fadeInUp 0.6s ease-out;
+    }
+
+    .auth-header {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        padding: 2.5rem;
+        text-align: center;
+        color: white;
+    }
+
+    .auth-logo {
+        font-size: 2.5rem;
+        font-weight: 800;
+        margin-bottom: 0.5rem;
+    }
+
+    .auth-logo i {
+        margin-right: 10px;
+    }
+
+    .auth-subtitle {
+        opacity: 0.9;
+        font-size: 1rem;
+    }
+
+    .auth-body {
+        padding: 2.5rem;
+    }
+
+    .form-floating {
+        margin-bottom: 1rem;
+    }
+
+    .form-floating .form-control {
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        height: 56px;
+        padding: 1rem 1rem;
+    }
+
+    .form-floating .form-control:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+    }
+
+    .form-floating label {
+        padding: 1rem;
+        color: var(--text-muted);
+    }
+
+    .form-select {
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        height: 56px;
+        padding: 0.75rem 1rem;
+    }
+
+    .form-select:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1);
+    }
+
+    .btn-auth {
+        width: 100%;
+        padding: 1rem;
+        font-size: 1.1rem;
+        font-weight: 600;
+        border-radius: 12px;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        border: none;
+        color: white;
+        transition: all 0.3s ease;
+        margin-top: 1rem;
+    }
+
+    .btn-auth:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
+        color: white;
+    }
+
+    .auth-footer {
+        text-align: center;
+        margin-top: 1.5rem;
+        color: var(--text-muted);
+    }
+
+    .auth-footer a {
+        color: var(--primary);
+        font-weight: 600;
+        text-decoration: none;
+    }
+
+    .auth-footer a:hover {
+        text-decoration: underline;
+    }
+
+    .role-selector {
+        display: flex;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .role-option {
+        flex: 1;
+        padding: 1.25rem;
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+
+    .role-option:hover {
+        border-color: var(--primary-light);
+        background: #f8fafc;
+    }
+
+    .role-option.active {
+        border-color: var(--primary);
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(79, 70, 229, 0.1) 100%);
+    }
+
+    .role-option i {
+        font-size: 2rem;
+        color: var(--primary);
+        margin-bottom: 0.5rem;
+        display: block;
+    }
+
+    .role-option span {
+        font-weight: 600;
+        color: var(--text-dark);
+    }
+
+    .password-rules {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-top: 0.5rem;
+        padding-left: 1rem;
+    }
+
+    .password-rules li {
+        margin-bottom: 0.25rem;
+    }
+
+    .alert {
+        border-radius: 12px;
+        border: none;
+        margin-bottom: 1.5rem;
+    }
+
+    .back-link {
+        position: absolute;
+        top: 2rem;
+        left: 2rem;
+        color: white;
+        text-decoration: none;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        transition: all 0.3s ease;
+    }
+
+    .back-link:hover {
+        color: white;
+        transform: translateX(-5px);
+    }
+
+    .validation-feedback {
+        font-size: 0.8rem;
+        margin-top: 0.25rem;
+        display: none;
+    }
+
+    .validation-feedback.show {
+        display: block;
+    }
+
+    .validation-feedback.valid {
+        color: #10b981;
+    }
+
+    .validation-feedback.invalid {
+        color: #ef4444;
+    }
+
+    .form-control.is-valid {
+        border-color: #10b981 !important;
+    }
+
+    .form-control.is-invalid {
+        border-color: #ef4444 !important;
+    }
+
+    .validation-spinner {
+        display: inline-block;
+        width: 12px;
+        height: 12px;
+        border: 2px solid #e2e8f0;
+        border-top-color: var(--primary);
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+        margin-right: 5px;
+    }
+
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <a href="{{ url_for('landing') }}" class="back-link">
+        <i class="bi bi-arrow-left"></i> Back to Home
+    </a>
+    
+    <div class="auth-card">
+        <div class="auth-header">
+            <div class="auth-logo">
+                <i class="bi bi-people-fill"></i>DailyHands
+            </div>
+            <p class="auth-subtitle">Create your account</p>
+        </div>
+        
+        <div class="auth-body">
+            {% if error %}
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-circle me-2"></i>{{ error }}
+            </div>
+            {% endif %}
+            
+            <form method="POST" id="registerForm">
+                <div class="role-selector">
+                    <div class="role-option active" data-role="contractor" onclick="selectRole('contractor')">
+                        <i class="bi bi-building"></i>
+                        <span>Contractor</span>
+                    </div>
+                    <div class="role-option" data-role="agency" onclick="selectRole('agency')">
+                        <i class="bi bi-briefcase"></i>
+                        <span>Agency</span>
+                    </div>
+                </div>
+                <input type="hidden" name="role" id="roleInput" value="contractor">
+                
+                <div class="form-floating">
+                    <input type="text" class="form-control" id="name" name="name" placeholder="Full Name" required>
+                    <label for="name"><i class="bi bi-person me-2"></i>Full Name / Agency Name</label>
+                </div>
+                <div class="validation-feedback" id="nameFeedback"></div>
+                
+                <div class="form-floating">
+                    <input type="email" class="form-control" id="email" name="email" placeholder="Email" required>
+                    <label for="email"><i class="bi bi-envelope me-2"></i>Email Address</label>
+                </div>
+                <div class="validation-feedback" id="emailFeedback"></div>
+                
+                <div class="form-floating">
+                    <input type="tel" class="form-control" id="phone" name="phone" placeholder="Phone" required>
+                    <label for="phone"><i class="bi bi-telephone me-2"></i>Phone Number</label>
+                </div>
+                <div class="validation-feedback" id="phoneFeedback"></div>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <input type="text" class="form-control" id="city" name="city" placeholder="City" required>
+                            <label for="city"><i class="bi bi-geo-alt me-2"></i>City</label>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="form-floating">
+                            <input type="text" class="form-control" id="area" name="area" placeholder="Area">
+                            <label for="area"><i class="bi bi-pin-map me-2"></i>Area</label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="form-floating">
+                    <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
+                    <label for="password"><i class="bi bi-lock me-2"></i>Password</label>
+                </div>
+                <ul class="password-rules">
+                    <li>Minimum 8 characters</li>
+                    <li>At least 1 uppercase letter</li>
+                    <li>At least 1 number</li>
+                    <li>At least 1 special character (!@#$%^&*)</li>
+                </ul>
+                
+                <button type="submit" class="btn btn-auth">
+                    <i class="bi bi-person-plus me-2"></i>Create Account
+                </button>
+            </form>
+            
+            <div class="auth-footer">
+                Already have an account? <a href="{{ url_for('login') }}">Login here</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let validationTimers = {};
+    
+    function selectRole(role) {
+        document.querySelectorAll('.role-option').forEach(opt => opt.classList.remove('active'));
+        document.querySelector(`[data-role="${role}"]`).classList.add('active');
+        document.getElementById('roleInput').value = role;
+        
+        // Re-validate name when role changes (for agency name check)
+        const nameInput = document.getElementById('name');
+        if (nameInput.value.length >= 2) {
+            validateField('name', nameInput.value);
+        }
+    }
+    
+    function validateField(field, value) {
+        const input = document.getElementById(field);
+        const feedback = document.getElementById(field + 'Feedback');
+        const role = document.getElementById('roleInput').value;
+        
+        if (!value || value.length < 2) {
+            input.classList.remove('is-valid', 'is-invalid');
+            feedback.classList.remove('show', 'valid', 'invalid');
+            return;
+        }
+        
+        // Show loading
+        feedback.innerHTML = '<span class="validation-spinner"></span>Checking...';
+        feedback.classList.add('show');
+        feedback.classList.remove('valid', 'invalid');
+        
+        const formData = new FormData();
+        formData.append('field', field);
+        formData.append('value', value);
+        formData.append('role', role);
+        
+        fetch('/api/check-availability', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.available) {
+                input.classList.remove('is-invalid');
+                input.classList.add('is-valid');
+                feedback.innerHTML = '<i class="bi bi-check-circle me-1"></i>Available';
+                feedback.classList.remove('invalid');
+                feedback.classList.add('show', 'valid');
+            } else {
+                input.classList.remove('is-valid');
+                input.classList.add('is-invalid');
+                feedback.innerHTML = '<i class="bi bi-x-circle me-1"></i>' + data.message;
+                feedback.classList.remove('valid');
+                feedback.classList.add('show', 'invalid');
+            }
+        })
+        .catch(err => {
+            feedback.classList.remove('show');
+        });
+    }
+    
+    // Add event listeners for real-time validation
+    ['name', 'email', 'phone'].forEach(field => {
+        const input = document.getElementById(field);
+        input.addEventListener('input', function() {
+            clearTimeout(validationTimers[field]);
+            validationTimers[field] = setTimeout(() => {
+                validateField(field, this.value);
+            }, 500); // Debounce 500ms
+        });
+        
+        input.addEventListener('blur', function() {
+            if (this.value.length >= 2) {
+                validateField(field, this.value);
+            }
+        });
+    });
+    
+    // Prevent form submission if any field is invalid
+    document.getElementById('registerForm').addEventListener('submit', function(e) {
+        const invalidFields = this.querySelectorAll('.is-invalid');
+        if (invalidFields.length > 0) {
+            e.preventDefault();
+            invalidFields[0].focus();
+        }
+    });
+</script>
+{% endblock %}

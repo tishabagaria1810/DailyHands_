@@ -1,0 +1,315 @@
+{% extends 'agency/base.html' %}
+
+{% block title %}New Requests - DailyHands{% endblock %}
+
+{% block page_content %}
+<div class="page-header animate-fade-in">
+    <h1 class="page-title">New Requests</h1>
+    <p class="page-subtitle">Browse and accept work requests in your city</p>
+</div>
+
+<!-- Requests List -->
+<div class="row g-4">
+    {% if requests_with_types %}
+        {% for item in requests_with_types %}
+        {% set req = item.request %}
+        {% set worker_types = item.worker_types %}
+        <div class="col-md-6 col-lg-4 animate-fade-in" style="animation-delay: {{ loop.index * 0.1 }}s;">
+            <div class="glass-card p-4 h-100">
+                <div class="d-flex justify-content-between align-items-start mb-3">
+                    <span class="status-badge status-pending">New</span>
+                    <small class="text-muted">{{ req.created_at[:10] }}</small>
+                </div>
+                
+                <h5 class="mb-2">{{ req.title }}</h5>
+                <p class="text-muted small mb-3">{{ req.description[:80] }}{% if req.description|length > 80 %}...{% endif %}</p>
+                
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted small"><i class="bi bi-person me-1"></i>Contractor</span>
+                        <span class="small fw-semibold">{{ req.contractor_name }}</span>
+                    </div>
+                    
+                    {% if worker_types %}
+                    <div class="mb-2">
+                        <span class="text-muted small"><i class="bi bi-list-check me-1"></i>Requirements</span>
+                    </div>
+                    {% for wt in worker_types %}
+                    <div class="d-flex justify-content-between mb-1 align-items-center">
+                        <span class="badge bg-primary small">{{ wt.worker_type }}</span>
+                        <span class="small">{{ wt.workers_needed }} × ₹{{ wt.wage_per_day }}/day</span>
+                    </div>
+                    {% endfor %}
+                    <hr class="my-2">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted small"><i class="bi bi-people me-1"></i>Total Workers</span>
+                        <span class="small fw-semibold">{{ req.workers_needed }}</span>
+                    </div>
+                    {% else %}
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted small"><i class="bi bi-person-badge me-1"></i>Type</span>
+                        <span class="small fw-semibold">{{ req.worker_type }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted small"><i class="bi bi-people me-1"></i>Workers</span>
+                        <span class="small fw-semibold">{{ req.workers_needed }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted small"><i class="bi bi-currency-rupee me-1"></i>Wage/Day</span>
+                        <span class="small fw-semibold">₹{{ req.wage_per_day }}</span>
+                    </div>
+                    {% endif %}
+                    
+                    <div class="d-flex justify-content-between mb-1">
+                        <span class="text-muted small"><i class="bi bi-calendar me-1"></i>Start Date</span>
+                        <span class="small fw-semibold">{{ req.start_date }}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted small"><i class="bi bi-clock me-1"></i>Duration</span>
+                        <span class="small fw-semibold">{{ req.expected_duration }} days</span>
+                    </div>
+                </div>
+                
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-primary flex-grow-1" 
+                            onclick="viewRequestDetails({{ loop.index0 }})"
+                            data-bs-toggle="modal" data-bs-target="#requestDetailsModal">
+                        <i class="bi bi-eye me-2"></i>View Details
+                    </button>
+                    <button type="button" class="btn btn-primary-custom flex-grow-1" 
+                            onclick="confirmAcceptRequest({{ req.id }}, '{{ req.title }}')"
+                            data-bs-toggle="modal" data-bs-target="#acceptRequestModal">
+                        <i class="bi bi-check-circle me-2"></i>Accept Request
+                    </button>
+                </div>
+                
+                <!-- Hidden data for modal -->
+                <script type="application/json" id="requestData{{ loop.index0 }}">
+                {
+                    "id": {{ req.id }},
+                    "title": "{{ req.title|e }}",
+                    "description": "{{ req.description|e }}",
+                    "contractor_name": "{{ req.contractor_name|e }}",
+                    "contractor_phone": "{{ req.contractor_phone|e }}",
+                    "start_date": "{{ req.start_date }}",
+                    "expected_duration": {{ req.expected_duration }},
+                    "workers_needed": {{ req.workers_needed }},
+                    "city": "{{ req.city|e }}",
+                    "created_at": "{{ req.created_at }}",
+                    "worker_types": [
+                        {% for wt in worker_types %}
+                        {
+                            "worker_type": "{{ wt.worker_type|e }}",
+                            "workers_needed": {{ wt.workers_needed }},
+                            "wage_per_day": {{ wt.wage_per_day }}
+                        }{% if not loop.last %},{% endif %}
+                        {% endfor %}
+                    ]
+                }
+                </script>
+            </div>
+        </div>
+        {% endfor %}
+    {% else %}
+    <div class="col-12 animate-fade-in">
+        <div class="glass-card p-5 text-center">
+            <i class="bi bi-inbox text-muted" style="font-size: 4rem;"></i>
+            <h4 class="mt-3">No New Requests</h4>
+            <p class="text-muted">There are no pending requests in your city at the moment</p>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<!-- Accept Request Confirmation Modal -->
+<div class="modal fade" id="acceptRequestModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title">
+                    <i class="bi bi-check-circle text-success me-2"></i>Accept Request
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <div class="mb-3">
+                    <i class="bi bi-question-circle text-primary" style="font-size: 4rem;"></i>
+                </div>
+                <h5>Accept this work request?</h5>
+                <p class="text-muted">Request: <strong id="acceptRequestTitle"></strong></p>
+                <p class="text-muted small">You will be responsible for assigning workers to this request.</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center">
+                <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg me-2"></i>Cancel
+                </button>
+                <form method="POST" id="acceptRequestForm" style="display: inline;">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle me-2"></i>Yes, Accept
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Request Details Modal -->
+<div class="modal fade" id="requestDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title">
+                    <i class="bi bi-info-circle text-primary me-2"></i>Request Details
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="requestDetailsContent">
+                <!-- Content will be loaded here -->
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg me-2"></i>Close
+                </button>
+                <button type="button" class="btn btn-primary-custom" id="acceptFromModal" onclick="acceptRequestFromModal()">
+                    <i class="bi bi-check-circle me-2"></i>Accept Request
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    let currentRequestId = null;
+    let currentRequestTitle = '';
+    
+    function confirmAcceptRequest(id, title) {
+        document.getElementById('acceptRequestForm').action = '/agency/accept-request/' + id;
+        document.getElementById('acceptRequestTitle').textContent = title;
+    }
+    
+    function viewRequestDetails(index) {
+        const dataScript = document.getElementById('requestData' + index);
+        if (!dataScript) return;
+        
+        const data = JSON.parse(dataScript.textContent);
+        currentRequestId = data.id;
+        currentRequestTitle = data.title;
+        
+        displayRequestDetails(data);
+    }
+    
+    function displayRequestDetails(data) {
+        let html = `
+            <div class="mb-4">
+                <h4>${data.title}</h4>
+                <p class="text-muted">${data.description || 'No description provided'}</p>
+            </div>
+            
+            <div class="row g-3 mb-4">
+                <div class="col-md-6">
+                    <div class="glass-card p-3">
+                        <h6 class="mb-3"><i class="bi bi-person me-2"></i>Contractor Information</h6>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Name</span>
+                            <strong>${data.contractor_name}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Phone</span>
+                            <strong>${data.contractor_phone}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">City</span>
+                            <strong>${data.city}</strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <div class="glass-card p-3">
+                        <h6 class="mb-3"><i class="bi bi-calendar me-2"></i>Project Information</h6>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Start Date</span>
+                            <strong>${data.start_date}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Duration</span>
+                            <strong>${data.expected_duration} days</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Total Workers</span>
+                            <strong>${data.workers_needed}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between mb-2">
+                            <span class="text-muted">Posted</span>
+                            <strong>${data.created_at.substring(0, 10)}</strong>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        if (data.worker_types && data.worker_types.length > 0) {
+            let totalDailyCost = 0;
+            html += `
+                <div class="glass-card p-3">
+                    <h6 class="mb-3"><i class="bi bi-list-check me-2"></i>Worker Requirements</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm mb-3">
+                            <thead>
+                                <tr>
+                                    <th>Worker Type</th>
+                                    <th>Count</th>
+                                    <th>Wage/Day</th>
+                                    <th>Daily Cost</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+            `;
+            
+            data.worker_types.forEach(wt => {
+                const dailyCost = wt.workers_needed * wt.wage_per_day;
+                totalDailyCost += dailyCost;
+                html += `
+                    <tr>
+                        <td><span class="badge bg-primary">${wt.worker_type}</span></td>
+                        <td>${wt.workers_needed}</td>
+                        <td>₹${wt.wage_per_day}</td>
+                        <td>₹${dailyCost}</td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                            </tbody>
+                        </table>
+                        <div class="d-flex justify-content-between align-items-center p-2 bg-light rounded">
+                            <strong>Total Daily Cost:</strong>
+                            <strong class="text-primary">₹${totalDailyCost}</strong>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center p-2 bg-light rounded mt-2">
+                            <strong>Total Project Cost (${data.expected_duration} days):</strong>
+                            <strong class="text-success">₹${totalDailyCost * data.expected_duration}</strong>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        document.getElementById('requestDetailsContent').innerHTML = html;
+    }
+    
+    function acceptRequestFromModal() {
+        if (currentRequestId) {
+            // Close the details modal
+            bootstrap.Modal.getInstance(document.getElementById('requestDetailsModal')).hide();
+            
+            // Open the accept confirmation modal
+            setTimeout(() => {
+                confirmAcceptRequest(currentRequestId, currentRequestTitle);
+                new bootstrap.Modal(document.getElementById('acceptRequestModal')).show();
+            }, 300);
+        }
+    }
+</script>
+{% endblock %}
