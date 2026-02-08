@@ -1,0 +1,303 @@
+{% extends 'contractor/base.html' %}
+
+{% block title %}Request Details - DailyHands{% endblock %}
+
+{% block page_content %}
+<div class="page-header animate-fade-in">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('contractor_requests') }}">My Requests</a></li>
+            <li class="breadcrumb-item active">{{ req.title }}</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row g-4">
+    <!-- Main Info -->
+    <div class="col-lg-8 animate-fade-in" style="animation-delay: 0.1s;">
+        <div class="glass-card p-4 mb-4">
+            <div class="d-flex justify-content-between align-items-start mb-3">
+                <h4 class="mb-0">{{ req.title }}</h4>
+                <span class="status-badge status-{{ req.status|lower }}">{{ req.status }}</span>
+            </div>
+            
+            <p class="text-muted">{{ req.description or 'No description provided' }}</p>
+            
+            <hr>
+            
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-primary bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-person-badge text-primary"></i>
+                        </div>
+                        <div>
+                            <small class="text-muted">Worker Types</small>
+                            <div class="fw-semibold">{{ req.worker_type }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-success bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-people text-success"></i>
+                        </div>
+                        <div>
+                            <small class="text-muted">Total Workers</small>
+                            <div class="fw-semibold">{{ req.workers_needed }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-info bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-calendar text-info"></i>
+                        </div>
+                        <div>
+                            <small class="text-muted">Start Date</small>
+                            <div class="fw-semibold">{{ req.start_date }}</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-secondary bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-clock text-secondary"></i>
+                        </div>
+                        <div>
+                            <small class="text-muted">Duration</small>
+                            <div class="fw-semibold">{{ req.expected_duration }} days</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-danger bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-geo-alt text-danger"></i>
+                        </div>
+                        <div>
+                            <small class="text-muted">City</small>
+                            <div class="fw-semibold">{{ req.city }}</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Worker Requirements Breakdown -->
+        {% if worker_types %}
+        <div class="glass-card p-4 mb-4">
+            <h5 class="mb-4"><i class="bi bi-list-check me-2"></i>Worker Requirements</h5>
+            <div class="table-responsive">
+                <table class="table table-custom mb-0">
+                    <thead>
+                        <tr>
+                            <th>Worker Type</th>
+                            <th>Count</th>
+                            <th>Wage/Day</th>
+                            <th>Daily Cost</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for wt in worker_types %}
+                        <tr>
+                            <td><span class="badge bg-primary">{{ wt.worker_type }}</span></td>
+                            <td>{{ wt.workers_needed }}</td>
+                            <td>₹{{ wt.wage_per_day }}</td>
+                            <td>₹{{ wt.workers_needed * wt.wage_per_day }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Timeline -->
+        <div class="glass-card p-4 mb-4">
+            <h5 class="mb-4"><i class="bi bi-clock-history me-2"></i>Request Timeline</h5>
+            <div class="timeline">
+                <div class="timeline-item completed">
+                    <strong>Request Created</strong>
+                    <p class="text-muted small mb-0">{{ req.created_at }}</p>
+                </div>
+                {% if req.status in ['Accepted', 'Assigned', 'Completed'] %}
+                <div class="timeline-item completed">
+                    <strong>Agency Accepted</strong>
+                    <p class="text-muted small mb-0">{{ req.agency_name }}</p>
+                </div>
+                {% endif %}
+                {% if req.status in ['Assigned', 'Completed'] %}
+                <div class="timeline-item completed">
+                    <strong>Workers Assigned</strong>
+                    <p class="text-muted small mb-0">{{ workers|length }} workers assigned</p>
+                </div>
+                {% endif %}
+                {% if req.status == 'Completed' %}
+                <div class="timeline-item completed">
+                    <strong>Completed</strong>
+                    <p class="text-muted small mb-0">{{ req.completed_at }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Assigned Workers -->
+        {% if workers %}
+        <div class="glass-card p-4">
+            <h5 class="mb-4"><i class="bi bi-people me-2"></i>Assigned Workers</h5>
+            <div class="table-responsive">
+                <table class="table table-custom mb-0">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Skill</th>
+                            <th>Daily Wage</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for worker in workers %}
+                        <tr>
+                            <td>{{ worker.name }}</td>
+                            <td>{{ worker.skill }}</td>
+                            <td>₹{{ worker.daily_wage }}</td>
+                            <td>
+                                <span class="badge bg-{{ 'success' if worker.status == 'Available' else 'warning' }}">
+                                    {{ worker.status }}
+                                </span>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <!-- Agency Info -->
+        {% if req.agency_name %}
+        <div class="glass-card p-4 mb-4 animate-fade-in" style="animation-delay: 0.2s;">
+            <h5 class="mb-3"><i class="bi bi-briefcase me-2"></i>Agency Details</h5>
+            <div class="d-flex align-items-center mb-3">
+                <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center me-3" 
+                     style="width: 50px; height: 50px; font-size: 1.5rem;">
+                    {{ req.agency_name[0] }}
+                </div>
+                <div>
+                    <strong>{{ req.agency_name }}</strong>
+                    <br><small class="text-muted"><i class="bi bi-telephone me-1"></i>{{ req.agency_phone }}</small>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Payment Summary -->
+        {% if payment and payment.total %}
+        <div class="glass-card p-4 mb-4 animate-fade-in" style="animation-delay: 0.3s;">
+            <h5 class="mb-3"><i class="bi bi-currency-rupee me-2"></i>Payment Summary</h5>
+            <div class="d-flex justify-content-between mb-2">
+                <span class="text-muted">Total Payment</span>
+                <strong class="text-success">₹{{ payment.total }}</strong>
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Actions -->
+        <div class="glass-card p-4 animate-fade-in" style="animation-delay: 0.4s;">
+            <h5 class="mb-3"><i class="bi bi-lightning me-2"></i>Actions</h5>
+            
+            {% if req.status == 'Assigned' %}
+            <button type="button" class="btn btn-success w-100 mb-2" 
+                    data-bs-toggle="modal" data-bs-target="#completeRequestModal">
+                <i class="bi bi-check-circle me-2"></i>Mark as Completed
+            </button>
+            {% endif %}
+            
+            {% if req.status == 'Completed' %}
+            <a href="{{ url_for('rate_agency', request_id=req.id) }}" class="btn btn-warning w-100 mb-2">
+                <i class="bi bi-star me-2"></i>Rate Agency
+            </a>
+            {% endif %}
+            
+            <a href="{{ url_for('contractor_requests') }}" class="btn btn-outline-custom w-100">
+                <i class="bi bi-arrow-left me-2"></i>Back to Requests
+            </a>
+        </div>
+        
+        <!-- Live Status Update -->
+        <div class="glass-card p-4 mt-4 animate-fade-in" style="animation-delay: 0.5s;">
+            <h5 class="mb-3"><i class="bi bi-broadcast me-2"></i>Live Status</h5>
+            <div id="liveStatus">
+                <div class="d-flex align-items-center">
+                    <div class="spinner-grow spinner-grow-sm text-primary me-2" role="status"></div>
+                    <span>Checking status...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Complete Request Confirmation Modal -->
+<div class="modal fade" id="completeRequestModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title">
+                    <i class="bi bi-check-circle text-success me-2"></i>Complete Request
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <div class="mb-3">
+                    <i class="bi bi-question-circle text-success" style="font-size: 4rem;"></i>
+                </div>
+                <h5>Mark this request as completed?</h5>
+                <p class="text-muted">This will release all assigned workers and finalize the payment.</p>
+                <p class="text-muted small">You can rate the agency after completion.</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center">
+                <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg me-2"></i>Cancel
+                </button>
+                <form method="POST" action="{{ url_for('complete_request', request_id=req.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-success">
+                        <i class="bi bi-check-circle me-2"></i>Yes, Complete
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Live status update using Fetch API
+    function updateStatus() {
+        fetch('/api/request-status/{{ req.id }}')
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('liveStatus').innerHTML = `
+                    <div class="d-flex justify-content-between mb-2">
+                        <span class="text-muted">Status</span>
+                        <span class="status-badge status-${data.status.toLowerCase()}">${data.status}</span>
+                    </div>
+                    <div class="d-flex justify-content-between">
+                        <span class="text-muted">Workers Assigned</span>
+                        <strong>${data.workers_assigned}</strong>
+                    </div>
+                `;
+            })
+            .catch(err => {
+                document.getElementById('liveStatus').innerHTML = '<span class="text-muted">Unable to fetch status</span>';
+            });
+    }
+    
+    updateStatus();
+    setInterval(updateStatus, 30000);
+</script>
+{% endblock %}

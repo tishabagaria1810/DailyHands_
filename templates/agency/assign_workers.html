@@ -1,0 +1,260 @@
+{% extends 'agency/base.html' %}
+
+{% block title %}Assign Workers - DailyHands{% endblock %}
+
+{% block extra_css %}
+<style>
+    .worker-type-section {
+        background: #f8fafc;
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        border: 2px solid #e2e8f0;
+    }
+    
+    .worker-type-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+        padding-bottom: 0.75rem;
+        border-bottom: 2px solid #e2e8f0;
+    }
+    
+    .worker-type-badge {
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        color: white;
+        padding: 0.5rem 1rem;
+        border-radius: 20px;
+        font-weight: 600;
+    }
+    
+    .selection-counter {
+        font-size: 0.9rem;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+    }
+    
+    .worker-card {
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .worker-card.valid {
+        border: 2px solid #10b981 !important;
+    }
+    
+    .worker-card.invalid {
+        opacity: 0.5;
+        cursor: not-allowed;
+    }
+    
+    .worker-card.selected {
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%) !important;
+        border-color: #10b981 !important;
+    }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="page-header animate-fade-in">
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="{{ url_for('agency_my_requests') }}">My Requests</a></li>
+            <li class="breadcrumb-item"><a href="{{ url_for('agency_request_detail', request_id=req.id) }}">{{ req.title }}</a></li>
+            <li class="breadcrumb-item active">Assign Workers</li>
+        </ol>
+    </nav>
+</div>
+
+<div class="row g-4">
+    <!-- Request Info -->
+    <div class="col-lg-4 animate-fade-in" style="animation-delay: 0.1s;">
+        <div class="glass-card p-4">
+            <h5 class="mb-3"><i class="bi bi-info-circle me-2"></i>Request Details</h5>
+            <h6>{{ req.title }}</h6>
+            <p class="text-muted small">{{ req.description }}</p>
+            
+            <hr>
+            
+            <div class="d-flex justify-content-between mb-2">
+                <span class="text-muted">Total Workers</span>
+                <strong>{{ req.workers_needed }}</strong>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+                <span class="text-muted">Duration</span>
+                <strong>{{ req.expected_duration }} days</strong>
+            </div>
+            
+            <hr>
+            
+            <h6 class="mb-3"><i class="bi bi-list-check me-2"></i>Worker Requirements</h6>
+            {% for wt, data in workers_by_type.items() %}
+            <div class="d-flex justify-content-between mb-2 align-items-center">
+                <span>{{ wt }}</span>
+                <div>
+                    <span class="badge bg-primary">{{ data.needed }}</span>
+                    <small class="text-muted ms-1">@ ₹{{ data.wage }}/day</small>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    
+    <!-- Worker Selection -->
+    <div class="col-lg-8 animate-fade-in" style="animation-delay: 0.2s;">
+        <div class="glass-card p-4">
+            <h5 class="mb-4"><i class="bi bi-people me-2"></i>Select Workers to Assign</h5>
+            
+            {% if error %}
+            <div class="alert alert-danger mb-4">
+                <i class="bi bi-exclamation-triangle me-2"></i>{{ error }}
+            </div>
+            {% endif %}
+            
+            <form method="POST" action="{{ url_for('assign_workers', request_id=req.id) }}" id="assignWorkersForm">
+                {% for wt, data in workers_by_type.items() %}
+                <div class="worker-type-section">
+                    <div class="worker-type-header">
+                        <div>
+                            <span class="worker-type-badge">{{ wt }}</span>
+                            <span class="text-muted ms-2">₹{{ data.wage }}/day</span>
+                        </div>
+                        <span class="selection-counter bg-light" id="counter_{{ wt.replace(' ', '_') }}">
+                            0 / {{ data.needed }} selected
+                        </span>
+                    </div>
+                    
+                    {% if data.workers %}
+                    <div class="row g-3">
+                        {% for worker in data.workers %}
+                        <div class="col-md-6">
+                            <div class="glass-card p-3 worker-card {% if worker.is_valid == 1 %}valid{% else %}invalid{% endif %}" 
+                                 onclick="{% if worker.is_valid == 1 %}toggleWorker('{{ wt.replace(' ', '_') }}', {{ worker.id }}, {{ data.needed }}){% endif %}">
+                                <div class="form-check">
+                                    <input class="form-check-input worker-checkbox" type="checkbox" 
+                                           name="workers_{{ wt.replace(' ', '_') }}" 
+                                           value="{{ worker.id }}" 
+                                           id="worker{{ worker.id }}" 
+                                           data-type="{{ wt.replace(' ', '_') }}"
+                                           style="width: 20px; height: 20px;"
+                                           {% if worker.is_valid == 0 %}disabled{% endif %}>
+                                    <label class="form-check-label w-100 ms-2" for="worker{{ worker.id }}">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <div>
+                                                <strong>{{ worker.name }}</strong>
+                                                {% if worker.is_valid == 1 %}
+                                                <span class="badge bg-success ms-1">✓</span>
+                                                {% endif %}
+                                                <br><small class="text-muted">{{ worker.phone }}</small>
+                                            </div>
+                                            <div class="text-end">
+                                                <small class="{% if worker.is_valid == 1 %}text-success{% else %}text-danger{% endif %}">
+                                                    ₹{{ worker.daily_wage }}/day
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <i class="bi bi-exclamation-circle text-warning" style="font-size: 2rem;"></i>
+                        <p class="text-muted mt-2 mb-0">No available {{ wt }} workers</p>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+                
+                <div class="mt-4 d-flex gap-3">
+                    <button type="button" class="btn btn-primary-custom flex-grow-1" 
+                            data-bs-toggle="modal" data-bs-target="#confirmAssignModal">
+                        <i class="bi bi-check-circle me-2"></i>Assign Selected Workers
+                    </button>
+                    <a href="{{ url_for('agency_request_detail', request_id=req.id) }}" class="btn btn-outline-custom">
+                        Cancel
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Confirm Assignment Modal -->
+<div class="modal fade" id="confirmAssignModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title">
+                    <i class="bi bi-person-plus text-primary me-2"></i>Confirm Assignment
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <div class="mb-3">
+                    <i class="bi bi-question-circle text-primary" style="font-size: 4rem;"></i>
+                </div>
+                <h5>Assign selected workers to this request?</h5>
+                <p class="text-muted">The selected workers will be marked as "Busy" until the request is completed.</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center">
+                <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal">
+                    <i class="bi bi-x-lg me-2"></i>Cancel
+                </button>
+                <button type="button" class="btn btn-primary-custom" onclick="document.getElementById('assignWorkersForm').submit();">
+                    <i class="bi bi-check-circle me-2"></i>Yes, Assign
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function toggleWorker(type, workerId, maxNeeded) {
+        const checkbox = document.getElementById('worker' + workerId);
+        if (checkbox.disabled) return;
+        
+        const card = checkbox.closest('.worker-card');
+        const currentSelected = document.querySelectorAll(`input[data-type="${type}"]:checked`).length;
+        
+        if (!checkbox.checked && currentSelected >= maxNeeded) {
+            // Already at max, don't allow more
+            return;
+        }
+        
+        checkbox.checked = !checkbox.checked;
+        card.classList.toggle('selected', checkbox.checked);
+        updateCounter(type);
+    }
+    
+    function updateCounter(type) {
+        const selected = document.querySelectorAll(`input[data-type="${type}"]:checked`).length;
+        const counter = document.getElementById('counter_' + type);
+        const needed = parseInt(counter.textContent.split('/')[1]);
+        
+        counter.textContent = `${selected} / ${needed} selected`;
+        
+        if (selected === needed) {
+            counter.classList.remove('bg-light', 'bg-danger');
+            counter.classList.add('bg-success', 'text-white');
+        } else if (selected > needed) {
+            counter.classList.remove('bg-light', 'bg-success');
+            counter.classList.add('bg-danger', 'text-white');
+        } else {
+            counter.classList.remove('bg-success', 'bg-danger', 'text-white');
+            counter.classList.add('bg-light');
+        }
+    }
+    
+    // Initialize counters
+    document.querySelectorAll('.selection-counter').forEach(counter => {
+        const type = counter.id.replace('counter_', '');
+        updateCounter(type);
+    });
+</script>
+{% endblock %}
