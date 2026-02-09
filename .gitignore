@@ -16,12 +16,6 @@ ENV/
 *.swo
 *~
 
-# Database files
-dailyhands.db
-*.db
-*.sqlite
-*.sqlite3
-
 # Environment variables
 .env
 .env.local
