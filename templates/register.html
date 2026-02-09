@@ -227,6 +227,19 @@
         margin-right: 5px;
     }
 
+    .form-floating .form-control.is-invalid {
+        border-color: #ef4444 !important;
+    }
+
+    .form-floating .form-control.is-valid {
+        border-color: #10b981 !important;
+    }
+
+    /* Adjust password toggle button position when field is invalid/valid */
+    .form-floating.has-validation-icon .password-toggle-btn {
+        right: 45px !important;
+    }
+
     @keyframes spin {
         to { transform: rotate(360deg); }
     }
@@ -254,7 +267,8 @@
             </div>
             {% endif %}
             
-            <form method="POST" id="registerForm">
+            <form method="POST" id="registerForm" action="{{ url_for('register') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="role-selector">
                     <div class="role-option active" data-role="contractor" onclick="selectRole('contractor')">
                         <i class="bi bi-building"></i>
@@ -304,14 +318,9 @@
                     <input type="password" class="form-control" id="password" name="password" placeholder="Password" required>
                     <label for="password"><i class="bi bi-lock me-2"></i>Password</label>
                 </div>
-                <ul class="password-rules">
-                    <li>Minimum 8 characters</li>
-                    <li>At least 1 uppercase letter</li>
-                    <li>At least 1 number</li>
-                    <li>At least 1 special character (!@#$%^&*)</li>
-                </ul>
+                <div id="passwordValidation"></div>
                 
-                <button type="submit" class="btn btn-auth">
+                <button type="submit" class="btn btn-auth" id="submitBtn">
                     <i class="bi bi-person-plus me-2"></i>Create Account
                 </button>
             </form>
@@ -329,21 +338,72 @@
     let validationTimers = {};
     
     function selectRole(role) {
+        // Update role selector UI
         document.querySelectorAll('.role-option').forEach(opt => opt.classList.remove('active'));
         document.querySelector(`[data-role="${role}"]`).classList.add('active');
         document.getElementById('roleInput').value = role;
         
-        // Re-validate name when role changes (for agency name check)
-        const nameInput = document.getElementById('name');
-        if (nameInput.value.length >= 2) {
-            validateField('name', nameInput.value);
+        // Clear all input fields
+        const inputFields = ['name', 'email', 'phone', 'city', 'area', 'password'];
+        inputFields.forEach(fieldId => {
+            const input = document.getElementById(fieldId);
+            if (input) {
+                input.value = '';
+                // Remove validation classes
+                input.classList.remove('is-valid', 'is-invalid');
+            }
+        });
+        
+        // Clear all validation feedback messages
+        const feedbackElements = ['nameFeedback', 'emailFeedback', 'phoneFeedback'];
+        feedbackElements.forEach(feedbackId => {
+            const feedback = document.getElementById(feedbackId);
+            if (feedback) {
+                feedback.innerHTML = '';
+                feedback.classList.remove('show', 'valid', 'invalid');
+            }
+        });
+        
+        // Reset password validation UI to initial state
+        const passwordValidationContainer = document.getElementById('passwordValidation');
+        if (passwordValidationContainer) {
+            const validationRules = passwordValidationContainer.querySelectorAll('.validation-rule');
+            validationRules.forEach(rule => {
+                rule.classList.remove('valid', 'invalid');
+            });
         }
+        
+        // Clear any error alerts
+        const errorAlerts = document.querySelectorAll('.alert-danger');
+        errorAlerts.forEach(alert => {
+            if (alert.textContent.includes('validation errors')) {
+                alert.remove();
+            }
+        });
+        
+        // Reset submit button state
+        const submitBtn = document.getElementById('submitBtn');
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.style.opacity = '1';
+            submitBtn.style.cursor = 'pointer';
+        }
+        
+        // Clear any pending validation timers
+        Object.keys(validationTimers).forEach(key => {
+            clearTimeout(validationTimers[key]);
+        });
     }
     
     function validateField(field, value) {
         const input = document.getElementById(field);
         const feedback = document.getElementById(field + 'Feedback');
         const role = document.getElementById('roleInput').value;
+        
+        // Special handling for phone field - validate format first
+        if (field === 'phone') {
+            return validatePhoneField(value);
+        }
         
         if (!value || value.length < 2) {
             input.classList.remove('is-valid', 'is-invalid');
@@ -386,19 +446,123 @@
         });
     }
     
-    // Add event listeners for real-time validation
-    ['name', 'email', 'phone'].forEach(field => {
-        const input = document.getElementById(field);
-        input.addEventListener('input', function() {
-            clearTimeout(validationTimers[field]);
-            validationTimers[field] = setTimeout(() => {
-                validateField(field, this.value);
-            }, 500); // Debounce 500ms
+    function validatePhoneField(value) {
+        const input = document.getElementById('phone');
+        const feedback = document.getElementById('phoneFeedback');
+        
+        // Remove non-digit characters for validation
+        const digitsOnly = value.replace(/\D/g, '');
+        
+        // Update input to show only digits
+        if (input.value !== digitsOnly) {
+            input.value = digitsOnly;
+        }
+        
+        // Validate phone number
+        if (digitsOnly.length === 0) {
+            input.classList.remove('is-valid', 'is-invalid');
+            feedback.classList.remove('show', 'valid', 'invalid');
+            feedback.innerHTML = '';
+            return false;
+        } else if (digitsOnly.length < 10) {
+            input.classList.remove('is-valid');
+            input.classList.add('is-invalid');
+            feedback.innerHTML = '<i class="bi bi-x-circle me-1"></i>Phone must be exactly 10 digits';
+            feedback.classList.remove('valid');
+            feedback.classList.add('show', 'invalid');
+            return false;
+        } else if (digitsOnly.length === 10) {
+            // Check availability with backend
+            input.classList.remove('is-invalid');
+            input.classList.add('is-valid');
+            feedback.innerHTML = '<span class="validation-spinner"></span>Checking...';
+            feedback.classList.add('show');
+            feedback.classList.remove('valid', 'invalid');
+            
+            const role = document.getElementById('roleInput').value;
+            const formData = new FormData();
+            formData.append('field', 'phone');
+            formData.append('value', digitsOnly);
+            formData.append('role', role);
+            
+            fetch('/api/check-availability', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.available) {
+                    input.classList.remove('is-invalid');
+                    input.classList.add('is-valid');
+                    feedback.innerHTML = '<i class="bi bi-check-circle me-1"></i>Valid phone number';
+                    feedback.classList.remove('invalid');
+                    feedback.classList.add('show', 'valid');
+                } else {
+                    input.classList.remove('is-valid');
+                    input.classList.add('is-invalid');
+                    feedback.innerHTML = '<i class="bi bi-x-circle me-1"></i>' + data.message;
+                    feedback.classList.remove('valid');
+                    feedback.classList.add('show', 'invalid');
+                }
+            })
+            .catch(err => {
+                feedback.classList.remove('show');
+            });
+            
+            return true;
+        } else {
+            // More than 10 digits - truncate
+            input.value = digitsOnly.substring(0, 10);
+            input.classList.remove('is-invalid');
+            input.classList.add('is-valid');
+            feedback.innerHTML = '<span class="validation-spinner"></span>Checking...';
+            feedback.classList.add('show');
+            feedback.classList.remove('valid', 'invalid');
+            
+            // Trigger validation for the truncated value
+            validatePhoneField(input.value);
+            return false;
+        }
+    }
+    
+    // Initialize password features on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize password visibility toggle AND live validation
+        initPasswordFeatures({
+            passwordFieldId: 'password',
+            feedbackContainerId: 'passwordValidation',
+            submitButtonId: 'submitBtn',
+            enableToggle: true,
+            enableValidation: true
+        });
+
+        // Add event listeners for real-time validation
+        // Name and email use debounced validation
+        ['name', 'email'].forEach(field => {
+            const input = document.getElementById(field);
+            input.addEventListener('input', function() {
+                clearTimeout(validationTimers[field]);
+                validationTimers[field] = setTimeout(() => {
+                    validateField(field, this.value);
+                }, 500); // Debounce 500ms
+            });
+            
+            input.addEventListener('blur', function() {
+                if (this.value.length >= 2) {
+                    validateField(field, this.value);
+                }
+            });
         });
         
-        input.addEventListener('blur', function() {
-            if (this.value.length >= 2) {
-                validateField(field, this.value);
+        // Phone field uses immediate validation (no debounce)
+        const phoneInput = document.getElementById('phone');
+        phoneInput.addEventListener('input', function() {
+            validateField('phone', this.value);
+        });
+        
+        phoneInput.addEventListener('blur', function() {
+            if (this.value.length > 0) {
+                validateField('phone', this.value);
             }
         });
     });
@@ -406,9 +570,32 @@
     // Prevent form submission if any field is invalid
     document.getElementById('registerForm').addEventListener('submit', function(e) {
         const invalidFields = this.querySelectorAll('.is-invalid');
-        if (invalidFields.length > 0) {
+        const passwordField = document.getElementById('password');
+        const passwordValid = validatePassword(passwordField.value).isValid;
+        
+        if (invalidFields.length > 0 || (passwordField.value && !passwordValid)) {
             e.preventDefault();
-            invalidFields[0].focus();
+            if (invalidFields.length > 0) {
+                invalidFields[0].focus();
+            } else {
+                passwordField.focus();
+            }
+            
+            // Show error message
+            const alertDiv = document.createElement('div');
+            alertDiv.className = 'alert alert-danger';
+            alertDiv.innerHTML = '<i class="bi bi-exclamation-circle me-2"></i>Please fix all validation errors before submitting.';
+            alertDiv.style.marginBottom = '1rem';
+            
+            const existingAlert = this.querySelector('.alert-danger');
+            if (existingAlert && existingAlert.textContent.includes('validation errors')) {
+                existingAlert.remove();
+            }
+            
+            this.insertBefore(alertDiv, this.firstChild);
+            
+            // Remove alert after 5 seconds
+            setTimeout(() => alertDiv.remove(), 5000);
         }
     });
 </script>

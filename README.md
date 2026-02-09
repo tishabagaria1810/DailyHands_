@@ -16,8 +16,9 @@ The system ensures accountability through digital attendance, automatic payment 
 
 ### Backend
 - **Flask 3.0.0** - Python web framework
+- **Flask-WTF 1.2.1** - CSRF protection and form validation
+- **Werkzeug 3.0.1** - Password hashing and security utilities
 - **SQLite3** - Lightweight relational database
-- **Werkzeug** - WSGI utilities and password security
 - **Python 3.x** - Core programming language
 
 ### Frontend
@@ -26,23 +27,30 @@ The system ensures accountability through digital attendance, automatic payment 
 - **Bootstrap 5** - Responsive UI framework
 - **Bootstrap Icons** - Icon library
 - **JavaScript (Vanilla)** - Client-side interactivity
+- **Chart.js 4.4.0** - Interactive data visualization
 
 ### Data Visualization
-- **Matplotlib 3.8.2** - Dynamic chart generation for earnings and request analytics
+- **Chart.js 4.4.0** - Interactive charts with hover tooltips and animations
+- **Matplotlib 3.8.2** - Legacy chart generation (being phased out)
 
-### Session Management
+### Session Management & Security
 - **Flask Sessions** - Secure server-side session handling
+- **CSRF Protection** - Flask-WTF CSRF tokens on all forms
+- **Password Hashing** - Werkzeug pbkdf2:sha256 hashing
 - **Cookies** - Session persistence
 
 ## Key Features
 
 ### Authentication & Security
 - **Role-based authentication** with separate login flows for Contractors and Agencies
+- **Password hashing** using Werkzeug's pbkdf2:sha256 algorithm
 - **Password validation** requiring 8+ characters, uppercase, numbers, and special characters
+- **CSRF protection** on all forms using Flask-WTF
 - **Unique constraint enforcement** across email, phone, and password fields
 - **Session-based authorization** with decorator-protected routes
 - **Forgot password flow** with OTP verification (simulated)
 - **Real-time field validation** via AJAX to check email/phone availability during registration
+- **Secure password storage** - all passwords hashed before database insertion
 
 ### Contractor Features
 - **Work Request Creation** with multiple worker types, custom wages, and duration
@@ -85,11 +93,13 @@ The system ensures accountability through digital attendance, automatic payment 
 - **Penalty earnings** added to agency when contractor delays completion
 
 ### Data Visualization
-- **Dynamic chart generation** using Matplotlib
-- **Contractor analytics**: Request trends over 6 months
-- **Agency analytics**: Earnings vs penalties over 6 months
-- **Request-specific charts**: Worker-wise days worked and earnings comparison
-- **Real-time graph rendering** served as PNG images
+- **Interactive Chart.js dashboards** with hover tooltips and smooth animations
+- **Contractor analytics**: Request trends over 6 months (line chart)
+- **Agency analytics**: Earnings vs penalties over 6 months (bar chart)
+- **Request-specific charts**: Worker-wise earnings distribution (doughnut chart) and days worked (bar chart)
+- **Real-time graph rendering** with JSON API endpoints
+- **Responsive charts** that adapt to mobile, tablet, and desktop
+- **Export capabilities** for data analysis
 
 ### User Experience
 - **Responsive design** that works on mobile, tablet, and desktop
@@ -293,6 +303,63 @@ dailyhands/
 - **One-to-One**: Work Request → Agency Earnings
 - **One-to-One**: Work Request → Rating
 
+## API Endpoints
+
+### Chart Data APIs (JSON)
+```
+GET /api/contractor/dashboard-data
+    Authentication: Required (contractor role)
+    Returns: { labels: ['2025-08', '2025-09', ...], counts: [5, 8, ...] }
+    Description: Request trends over last 6 months for line chart
+
+GET /api/agency/earnings-data
+    Authentication: Required (agency role)
+    Returns: { labels: [...], earned: [...], penalty: [...] }
+    Description: Earnings and penalties over last 6 months for bar chart
+
+GET /api/request/<int:request_id>/worker-earnings
+    Authentication: Required (agency role, must own request)
+    Returns: { names: ['Worker 1', ...], earnings: [5000, ...] }
+    Description: Worker-wise earnings distribution for doughnut chart
+
+GET /api/request/<int:request_id>/worker-days
+    Authentication: Required (agency role, must own request)
+    Returns: { names: ['Worker 1', ...], days: [15, ...] }
+    Description: Days worked by each worker for bar chart
+```
+
+### Legacy Graph Routes (PNG - Deprecated)
+```
+GET /graph/contractor-requests
+    Returns: PNG image of request trends
+
+GET /graph/agency-earnings
+    Returns: PNG image of earnings overview
+
+GET /graph/request-earnings/<int:request_id>
+    Returns: PNG image of worker earnings breakdown
+```
+
+### Validation APIs
+```
+POST /api/check-availability
+    Parameters: field, value, role
+    Returns: { available: true/false, message: '...' }
+    Description: Real-time validation for email/phone/name uniqueness
+
+GET /api/request-details/<int:request_id>
+    Returns: Request details with worker types
+    Description: Used for request preview modals
+
+GET /api/request-status/<int:request_id>
+    Returns: { status, created_at, agency_name, workers_assigned }
+    Description: Real-time status updates
+
+GET /api/payment-preview/<int:request_id>
+    Returns: { total_payment, days_worked }
+    Description: Payment calculation preview
+```
+
 ## Application Flow
 
 ### Registration Flow
@@ -453,34 +520,43 @@ This utility script displays all tables and their contents for debugging.
 
 ## Security Considerations
 
-### Current Implementation
+### Current Implementation ✅
 - Session-based authentication with server-side storage
 - Role-based access control with decorators
 - Unique constraints on email and phone numbers
 - Password validation (length, complexity)
-- CSRF protection via Flask sessions
+- **Password hashing** using Werkzeug's pbkdf2:sha256
+- **CSRF protection** via Flask-WTF on all forms
 - SQL injection prevention via parameterized queries
+- Environment variable support for secret keys
 
-### Security Concerns (Need Improvement)
-⚠️ **Passwords stored in plain text** - Critical security vulnerability
-⚠️ **No password hashing** - Passwords visible in database
-⚠️ **Hardcoded secret key** - Should use environment variable
-⚠️ **No HTTPS enforcement** - Data transmitted in plain text
-⚠️ **No rate limiting** - Vulnerable to brute force attacks
-⚠️ **OTP displayed on screen** - Should use SMS/email service
-⚠️ **No input sanitization** - Potential XSS vulnerabilities
-⚠️ **No CSRF tokens** - Forms vulnerable to CSRF attacks
+### Security Improvements Made 🎉
+✅ **Passwords now hashed** - All passwords stored securely with pbkdf2:sha256  
+✅ **CSRF tokens implemented** - All forms protected from CSRF attacks  
+✅ **Secure password reset** - New passwords automatically hashed  
+✅ **Backward compatible** - Existing users can still login  
+
+### Remaining Security Concerns (Need Improvement)
+⚠️ **No HTTPS enforcement** - Data transmitted in plain text  
+⚠️ **No rate limiting** - Vulnerable to brute force attacks  
+⚠️ **OTP displayed on screen** - Should use SMS/email service  
+⚠️ **No input sanitization** - Potential XSS vulnerabilities  
+⚠️ **No session timeout** - Sessions persist indefinitely  
+⚠️ **No password reset token expiration** - OTP doesn't expire
 
 ## Future Enhancements
 
-### Critical Security Improvements
-- **Password hashing** using bcrypt or Werkzeug's generate_password_hash
+### Critical Security Improvements (COMPLETED ✅)
+- ✅ **Password hashing** using Werkzeug's pbkdf2:sha256 - IMPLEMENTED
+- ✅ **CSRF token implementation** for all forms - IMPLEMENTED
+- ✅ **Interactive Chart.js dashboards** - IMPLEMENTED
 - **Environment-based configuration** for secret keys and database URLs
 - **HTTPS enforcement** in production
 - **Rate limiting** on login and registration endpoints
 - **Input sanitization** to prevent XSS attacks
-- **CSRF token implementation** for all forms
 - **Real OTP service** integration (Twilio, AWS SNS)
+- **Session timeout** configuration
+- **Password reset token expiration**
 
 ### Feature Enhancements
 - **Admin panel** for platform management and analytics
@@ -510,13 +586,13 @@ This utility script displays all tables and their contents for debugging.
 - **Load balancing** for scalability
 - **Monitoring and logging** with Sentry or ELK stack
 
-### UI/UX Improvements
+### UI/UX Improvements (PARTIALLY COMPLETED)
+- ✅ **Interactive charts** using Chart.js - IMPLEMENTED
 - **Dark mode** toggle
 - **Progressive Web App** (PWA) capabilities
 - **Offline support** for basic features
 - **Better mobile responsiveness** for complex tables
 - **Drag-and-drop** worker assignment
-- **Interactive charts** using Chart.js or D3.js
 - **Onboarding tutorial** for new users
 - **Keyboard shortcuts** for power users
 - **Accessibility improvements** (ARIA labels, screen reader support)

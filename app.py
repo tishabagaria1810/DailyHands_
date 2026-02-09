@@ -1,4 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify, send_file
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask_wtf.csrf import CSRFProtect
 import sqlite3
 import re
 import os
@@ -11,7 +13,12 @@ from datetime import datetime, timedelta
 from functools import wraps
 
 app = Flask(__name__)
-app.secret_key = 'dailyhands_secret_key_2024'
+app.secret_key = os.environ.get('FLASK_SECRET_KEY', 'dailyhands_secret_key_2024')
+app.config['WTF_CSRF_ENABLED'] = True
+app.config['WTF_CSRF_TIME_LIMIT'] = None  # No time limit for CSRF tokens
+
+# Initialize CSRF Protection
+csrf = CSRFProtect(app)
 
 DATABASE = 'dailyhands.db'
 
@@ -198,16 +205,8 @@ def register():
             conn.close()
             return render_template('register.html', error="Email already registered")
         
-        # Check password uniqueness across both tables
-        cursor.execute("SELECT id FROM users WHERE password = ?", (password,))
-        if cursor.fetchone():
-            conn.close()
-            return render_template('register.html', error="This password is already in use. Please choose a different password")
-        
-        cursor.execute("SELECT id FROM agencies WHERE password = ?", (password,))
-        if cursor.fetchone():
-            conn.close()
-            return render_template('register.html', error="This password is already in use. Please choose a different password")
+        # Hash the password before storing
+        hashed_password = generate_password_hash(password)
         
         # Check agency name uniqueness
         if role == 'agency':
@@ -220,12 +219,12 @@ def register():
             cursor.execute("""
                 INSERT INTO users (name, email, password, phone, city, area, role)
                 VALUES (?, ?, ?, ?, ?, ?, 'contractor')
-            """, (name, email, password, phone, city, area))
+            """, (name, email, hashed_password, phone, city, area))
         else:
             cursor.execute("""
                 INSERT INTO agencies (name, email, password, phone, city, area)
                 VALUES (?, ?, ?, ?, ?, ?)
-            """, (name, email, password, phone, city, area))
+            """, (name, email, hashed_password, phone, city, area))
         
         conn.commit()
         conn.close()
@@ -245,18 +244,18 @@ def login():
         cursor = conn.cursor()
         
         if role == 'contractor':
-            cursor.execute("SELECT * FROM users WHERE email = ? AND password = ?", (email, password))
+            cursor.execute("SELECT * FROM users WHERE email = ?", (email,))
             user = cursor.fetchone()
-            if user:
+            if user and check_password_hash(user['password'], password):
                 session['user_id'] = user['id']
                 session['role'] = 'contractor'
                 session['name'] = user['name']
                 conn.close()
                 return redirect(url_for('contractor_dashboard'))
         else:
-            cursor.execute("SELECT * FROM agencies WHERE email = ? AND password = ?", (email, password))
+            cursor.execute("SELECT * FROM agencies WHERE email = ?", (email,))
             agency = cursor.fetchone()
-            if agency:
+            if agency and check_password_hash(agency['password'], password):
                 session['user_id'] = agency['id']
                 session['role'] = 'agency'
                 session['name'] = agency['name']
@@ -325,6 +324,9 @@ def reset_password():
     if not valid:
         return jsonify({'success': False, 'error': msg})
     
+    # Hash the new password
+    hashed_password = generate_password_hash(new_password)
+    
     conn = get_db()
     cursor = conn.cursor()
     
@@ -332,9 +334,9 @@ def reset_password():
     user_id = session.get('reset_user_id')
     
     if role == 'contractor':
-        cursor.execute("UPDATE users SET password = ? WHERE id = ?", (new_password, user_id))
+        cursor.execute("UPDATE users SET password = ? WHERE id = ?", (hashed_password, user_id))
     else:
-        cursor.execute("UPDATE agencies SET password = ? WHERE id = ?", (new_password, user_id))
+        cursor.execute("UPDATE agencies SET password = ? WHERE id = ?", (hashed_password, user_id))
     
     conn.commit()
     conn.close()
@@ -1373,6 +1375,158 @@ def payment_preview(request_id):
     return jsonify({
         'total_payment': result['total_payment'] or 0,
         'days_worked': result['days_worked'] or 0
+    })
+
+# ============ CHART.JS API ENDPOINTS ============
+@app.route('/api/contractor/dashboard-data')
+@login_required(role='contractor')
+def contractor_dashboard_data():
+    """JSON endpoint for contractor requests chart"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT strftime('%Y-%m', created_at) as month, COUNT(*) as count
+        FROM work_requests
+        WHERE contractor_id = ?
+        GROUP BY month
+        ORDER BY month DESC
+        LIMIT 6
+    """, (session['user_id'],))
+    data = cursor.fetchall()
+    conn.close()
+    
+    # Reverse to show oldest to newest
+    data = list(reversed(data))
+    
+    if not data:
+        return jsonify({
+            'labels': ['No Data'],
+            'counts': [0]
+        })
+    
+    return jsonify({
+        'labels': [row['month'] for row in data],
+        'counts': [row['count'] for row in data]
+    })
+
+@app.route('/api/agency/earnings-data')
+@login_required(role='agency')
+def agency_earnings_data():
+    """JSON endpoint for agency earnings chart"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    cursor.execute("""
+        SELECT strftime('%Y-%m', wr.created_at) as month, 
+               SUM(ae.total_earned) as earned,
+               SUM(ae.penalty_earned) as penalty
+        FROM agency_earnings ae
+        JOIN work_requests wr ON ae.request_id = wr.id
+        WHERE ae.agency_id = ?
+        GROUP BY month
+        ORDER BY month DESC
+        LIMIT 6
+    """, (session['user_id'],))
+    data = cursor.fetchall()
+    conn.close()
+    
+    # Reverse to show oldest to newest
+    data = list(reversed(data))
+    
+    if not data:
+        return jsonify({
+            'labels': ['No Data'],
+            'earned': [0],
+            'penalty': [0]
+        })
+    
+    return jsonify({
+        'labels': [row['month'] for row in data],
+        'earned': [row['earned'] or 0 for row in data],
+        'penalty': [row['penalty'] or 0 for row in data]
+    })
+
+@app.route('/api/request/<int:request_id>/worker-earnings')
+@login_required(role='agency')
+def request_worker_earnings_data(request_id):
+    """JSON endpoint for worker earnings breakdown"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Verify agency owns this request
+    cursor.execute("""
+        SELECT id FROM work_requests 
+        WHERE id = ? AND agency_id = ?
+    """, (request_id, session['user_id']))
+    
+    if not cursor.fetchone():
+        conn.close()
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    # Get worker earnings
+    cursor.execute("""
+        SELECT w.name,
+               COALESCE(SUM(CASE WHEN a.status = 'Present' THEN w.daily_wage ELSE 0 END), 0) as total_earned
+        FROM request_workers rw
+        JOIN workers w ON rw.worker_id = w.id
+        LEFT JOIN attendance a ON a.worker_id = w.id AND a.request_id = rw.request_id
+        WHERE rw.request_id = ?
+        GROUP BY w.id, w.name
+    """, (request_id,))
+    data = cursor.fetchall()
+    conn.close()
+    
+    if not data:
+        return jsonify({
+            'names': ['No Data'],
+            'earnings': [0]
+        })
+    
+    return jsonify({
+        'names': [row['name'] for row in data],
+        'earnings': [row['total_earned'] for row in data]
+    })
+
+@app.route('/api/request/<int:request_id>/worker-days')
+@login_required(role='agency')
+def request_worker_days_data(request_id):
+    """JSON endpoint for worker days worked"""
+    conn = get_db()
+    cursor = conn.cursor()
+    
+    # Verify agency owns this request
+    cursor.execute("""
+        SELECT id FROM work_requests 
+        WHERE id = ? AND agency_id = ?
+    """, (request_id, session['user_id']))
+    
+    if not cursor.fetchone():
+        conn.close()
+        return jsonify({'error': 'Unauthorized'}), 403
+    
+    # Get worker days
+    cursor.execute("""
+        SELECT w.name,
+               COUNT(CASE WHEN a.status = 'Present' THEN 1 END) as days_present
+        FROM request_workers rw
+        JOIN workers w ON rw.worker_id = w.id
+        LEFT JOIN attendance a ON a.worker_id = w.id AND a.request_id = rw.request_id
+        WHERE rw.request_id = ?
+        GROUP BY w.id, w.name
+    """, (request_id,))
+    data = cursor.fetchall()
+    conn.close()
+    
+    if not data:
+        return jsonify({
+            'names': ['No Data'],
+            'days': [0]
+        })
+    
+    return jsonify({
+        'names': [row['name'] for row in data],
+        'days': [row['days_present'] for row in data]
     })
 
 # ============ GRAPH ROUTES ============

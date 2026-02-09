@@ -218,7 +218,8 @@
             </div>
             {% endif %}
             
-            <form method="POST" onsubmit="{{ url_for('login') }}">
+            <form method="POST" action="{{ url_for('login') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="role-selector">
                     <div class="role-option active" data-role="contractor" onclick="selectRole('contractor')">
                         <i class="bi bi-building"></i>
@@ -267,5 +268,14 @@
         document.querySelector(`[data-role="${role}"]`).classList.add('active');
         document.getElementById('roleInput').value = role;
     }
+
+    // Initialize password visibility toggle on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        initPasswordFeatures({
+            passwordFieldId: 'password',
+            enableToggle: true,
+            enableValidation: false
+        });
+    });
 </script>
 {% endblock %}
