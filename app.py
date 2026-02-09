@@ -90,6 +90,18 @@ def is_phone_unique(phone, exclude_table=None, exclude_id=None):
 def landing():
     return render_template('landing.html')
 
+# ============ PREVIEW ROUTE (UI KIT INTEGRATION - PHASE 1) ============
+# This route is completely isolated and does NOT affect production code
+# NO authentication, NO database, NO session - pure static preview only
+@app.route('/preview/dashboard')
+def preview_dashboard():
+    """
+    Static UI preview for third-party dashboard integration.
+    This is a DESIGN REFERENCE ONLY - no backend logic connected.
+    Safe to access without login for visual inspection.
+    """
+    return render_template('preview_dashboard.html')
+
 # ============ REAL-TIME VALIDATION API ============
 @app.route('/api/check-availability', methods=['POST'])
 def check_availability():
@@ -1743,4 +1755,4 @@ if __name__ == '__main__':
     print("=" * 50)
     print("  Open: http://127.0.0.1:5000")
     print("=" * 50)
-    app.run(debug=True)
+    app.run()
