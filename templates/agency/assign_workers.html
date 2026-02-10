@@ -113,6 +113,7 @@
             {% endif %}
             
             <form method="POST" action="{{ url_for('assign_workers', request_id=req.id) }}" id="assignWorkersForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 {% for wt, data in workers_by_type.items() %}
                 <div class="worker-type-section">
                     <div class="worker-type-header">

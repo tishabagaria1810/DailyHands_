@@ -90,6 +90,7 @@
             </div>
             {% else %}
             <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="text-center mb-4">
                     <h5 class="mb-3">Rate your experience</h5>
                     <div class="star-input">

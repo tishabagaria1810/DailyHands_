@@ -169,6 +169,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST" action="{{ url_for('add_worker') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Worker Name</label>
@@ -218,6 +219,7 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form method="POST" id="editWorkerForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Worker Name</label>
@@ -281,6 +283,7 @@
                     <i class="bi bi-x-lg me-2"></i>Cancel
                 </button>
                 <form method="POST" id="deleteWorkerForm" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     <button type="submit" class="btn btn-danger">
                         <i class="bi bi-trash me-2"></i>Yes, Delete
                     </button>
