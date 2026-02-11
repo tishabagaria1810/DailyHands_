@@ -1,0 +1,149 @@
+{% extends 'agency/base.html' %}
+
+{% block title %}Agency Dashboard - DailyHands{% endblock %}
+
+{% block page_content %}
+<div class="page-header animate-fade-in">
+    <h1 class="page-title">Welcome back, {{ session.name }}!</h1>
+    <p class="page-subtitle">Here's your agency overview</p>
+</div>
+
+<!-- Stats Cards -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3 col-6 animate-fade-in" style="animation-delay: 0.1s;">
+        <div class="stat-card orange">
+            <div class="stat-number">{{ new_requests }}</div>
+            <div class="stat-label">New Requests</div>
+            <i class="bi bi-bell stat-icon"></i>
+        </div>
+    </div>
+    <div class="col-md-3 col-6 animate-fade-in" style="animation-delay: 0.2s;">
+        <div class="stat-card green">
+            <div class="stat-number">{{ active }}</div>
+            <div class="stat-label">Active Jobs</div>
+            <i class="bi bi-activity stat-icon"></i>
+        </div>
+    </div>
+    <div class="col-md-3 col-6 animate-fade-in" style="animation-delay: 0.3s;">
+        <div class="stat-card">
+            <div class="stat-number">{{ total_workers }}</div>
+            <div class="stat-label">Total Workers</div>
+            <i class="bi bi-people stat-icon"></i>
+        </div>
+    </div>
+    <div class="col-md-3 col-6 animate-fade-in" style="animation-delay: 0.4s;">
+        <div class="stat-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+            <div class="stat-number">₹{{ total_earnings }}</div>
+            <div class="stat-label">Total Earnings</div>
+            <i class="bi bi-currency-rupee stat-icon"></i>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions -->
+<div class="row g-4 mb-4">
+    <div class="col-12 animate-fade-in" style="animation-delay: 0.5s;">
+        <div class="glass-card p-4">
+            <h5 class="mb-4"><i class="bi bi-lightning me-2"></i>Quick Actions</h5>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <a href="{{ url_for('agency_new_requests') }}" class="btn btn-primary-custom w-100 py-3">
+                        <i class="bi bi-bell me-2"></i>New Requests
+                        {% if new_requests > 0 %}
+                        <span class="badge bg-danger ms-2">{{ new_requests }}</span>
+                        {% endif %}
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{{ url_for('agency_workers') }}" class="btn btn-outline-custom w-100 py-3">
+                        <i class="bi bi-person-plus me-2"></i>Manage Workers
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{{ url_for('agency_my_requests') }}" class="btn btn-outline-custom w-100 py-3">
+                        <i class="bi bi-list-task me-2"></i>My Jobs
+                    </a>
+                </div>
+                <div class="col-md-3">
+                    <a href="{{ url_for('agency_earnings') }}" class="btn btn-outline-custom w-100 py-3">
+                        <i class="bi bi-currency-rupee me-2"></i>View Earnings
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <!-- Recent Requests -->
+    <div class="col-lg-7 animate-fade-in" style="animation-delay: 0.6s;">
+        <div class="glass-card p-4">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Recent Jobs</h5>
+                <a href="{{ url_for('agency_my_requests') }}" class="btn btn-sm btn-outline-custom">View All</a>
+            </div>
+            
+            {% if recent_requests %}
+            <div class="table-responsive">
+                <table class="table table-custom mb-0">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            <th>Contractor</th>
+                            <th>Status</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for req in recent_requests %}
+                        <tr>
+                            <td>
+                                <strong>{{ req.title }}</strong>
+                                <br><small class="text-muted">{{ req.worker_type }}</small>
+                            </td>
+                            <td>{{ req.contractor_name }}</td>
+                            <td>
+                                <span class="status-badge status-{{ req.status|lower }}">{{ req.status }}</span>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('agency_request_detail', request_id=req.id) }}" class="btn btn-sm btn-primary-custom">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="text-center py-5">
+                <i class="bi bi-inbox text-muted" style="font-size: 3rem;"></i>
+                <p class="text-muted mt-3">No jobs yet</p>
+                <a href="{{ url_for('agency_new_requests') }}" class="btn btn-primary-custom">
+                    <i class="bi bi-search me-2"></i>Browse New Requests
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+    
+    <!-- Graph -->
+    <div class="col-lg-5 animate-fade-in" style="animation-delay: 0.7s;">
+        <div class="glass-card p-4">
+            <h5 class="mb-4"><i class="bi bi-bar-chart me-2"></i>Earnings Overview</h5>
+            <div style="height: 300px;">
+                <canvas id="agencyEarningsChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Render agency earnings chart
+    document.addEventListener('DOMContentLoaded', function() {
+        renderAgencyEarningsChart('agencyEarningsChart', '{{ url_for("agency_earnings_data") }}');
+    });
+</script>
+{% endblock %}

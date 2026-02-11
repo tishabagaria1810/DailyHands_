@@ -1,0 +1,358 @@
+{% extends 'contractor/base.html' %}
+
+{% block title %}Create Request - DailyHands{% endblock %}
+
+{% block extra_css %}
+<style>
+    .worker-type-row {
+        background: #f8fafc;
+        border-radius: 12px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border: 2px solid #e2e8f0;
+        transition: all 0.3s ease;
+    }
+    
+    .worker-type-row:hover {
+        border-color: var(--primary-light);
+    }
+    
+    .worker-type-row .row-number {
+        width: 32px;
+        height: 32px;
+        background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    
+    .btn-remove-row {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        padding: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .btn-add-worker {
+        border: 2px dashed var(--primary);
+        background: transparent;
+        color: var(--primary);
+        border-radius: 12px;
+        padding: 1rem;
+        width: 100%;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-add-worker:hover {
+        background: rgba(99, 102, 241, 0.1);
+        border-color: var(--primary-dark);
+        color: var(--primary-dark);
+    }
+    
+    .summary-card {
+        background: linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(79, 70, 229, 0.1) 100%);
+        border-radius: 12px;
+        padding: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .summary-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 0.5rem 0;
+        border-bottom: 1px solid rgba(99, 102, 241, 0.2);
+    }
+    
+    .summary-item:last-child {
+        border-bottom: none;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block page_content %}
+<div class="page-header animate-fade-in">
+    <h1 class="page-title">Create Work Request</h1>
+    <p class="page-subtitle">Fill in the details to find workers for your project</p>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-10 animate-fade-in" style="animation-delay: 0.1s;">
+        <div class="glass-card p-4">
+            <form method="POST" id="createRequestForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="row g-3">
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-card-heading me-2"></i>Project Title
+                        </label>
+                        <input type="text" class="form-control form-control-custom" name="title" 
+                               placeholder="e.g., House Construction Project" required>
+                    </div>
+                    
+                    <div class="col-12">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-text-paragraph me-2"></i>Description
+                        </label>
+                        <textarea class="form-control form-control-custom" name="description" rows="3" 
+                                  placeholder="Describe the work requirements in detail..."></textarea>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-calendar-event me-2"></i>Start Date
+                        </label>
+                        <input type="date" class="form-control form-control-custom" name="start_date" required>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-clock me-2"></i>Expected Duration (Days)
+                        </label>
+                        <input type="number" class="form-control form-control-custom" name="expected_duration" 
+                               min="1" max="365" placeholder="Number of days" required>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <label class="form-label fw-semibold">
+                            <i class="bi bi-geo-alt me-2"></i>City
+                        </label>
+                        <input type="text" class="form-control form-control-custom" value="{{ city }}" disabled>
+                        <small class="text-muted">From your profile</small>
+                    </div>
+                    
+                    <!-- Worker Types Section -->
+                    <div class="col-12 mt-4">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <label class="form-label fw-semibold mb-0">
+                                <i class="bi bi-people me-2"></i>Worker Requirements
+                            </label>
+                            <span class="badge bg-primary" id="totalWorkersCount">0 workers</span>
+                        </div>
+                        
+                        <div id="workerTypesContainer">
+                            <!-- Worker type rows will be added here -->
+                        </div>
+                        
+                        <button type="button" class="btn btn-add-worker" onclick="addWorkerTypeRow()">
+                            <i class="bi bi-plus-circle me-2"></i>Add Worker Type
+                        </button>
+                        
+                        <!-- Summary -->
+                        <div class="summary-card" id="summaryCard" style="display: none;">
+                            <h6 class="mb-3"><i class="bi bi-calculator me-2"></i>Request Summary</h6>
+                            <div id="summaryContent"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-12 mt-4">
+                        <div class="d-flex gap-3">
+                            <button type="submit" class="btn btn-primary-custom flex-grow-1">
+                                <i class="bi bi-send me-2"></i>Submit Request
+                            </button>
+                            <a href="{{ url_for('contractor_dashboard') }}" class="btn btn-outline-custom">
+                                <i class="bi bi-x-lg me-2"></i>Cancel
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Info Card -->
+<div class="row justify-content-center mt-4">
+    <div class="col-lg-10 animate-fade-in" style="animation-delay: 0.2s;">
+        <div class="glass-card p-4" style="background: linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 150, 105, 0.1) 100%);">
+            <h6 class="mb-3"><i class="bi bi-info-circle me-2 text-success"></i>How it works</h6>
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="d-flex align-items-start">
+                        <span class="badge bg-success rounded-circle me-2" style="width: 24px; height: 24px; line-height: 16px;">1</span>
+                        <div>
+                            <strong>Submit Request</strong>
+                            <p class="text-muted small mb-0">Your request will be visible to agencies in {{ city }}</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="d-flex align-items-start">
+                        <span class="badge bg-success rounded-circle me-2" style="width: 24px; height: 24px; line-height: 16px;">2</span>
+                        <div>
+                            <strong>Agency Accepts</strong>
+                            <p class="text-muted small mb-0">An agency will accept and assign workers</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="d-flex align-items-start">
+                        <span class="badge bg-success rounded-circle me-2" style="width: 24px; height: 24px; line-height: 16px;">3</span>
+                        <div>
+                            <strong>Track & Complete</strong>
+                            <p class="text-muted small mb-0">Track progress and mark as complete</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const workerTypes = ['Mason', 'Carpenter', 'Electrician', 'Plumber', 'Painter', 'Helper', 'Welder', 'Labour'];
+    let rowCount = 0;
+    
+    // Set minimum date to today
+    document.querySelector('input[name="start_date"]').min = new Date().toISOString().split('T')[0];
+    
+    function addWorkerTypeRow() {
+        rowCount++;
+        const container = document.getElementById('workerTypesContainer');
+        
+        const row = document.createElement('div');
+        row.className = 'worker-type-row animate-fade-in';
+        row.id = 'workerRow' + rowCount;
+        
+        let optionsHtml = '<option value="">Select type</option>';
+        workerTypes.forEach(type => {
+            optionsHtml += `<option value="${type}">${type}</option>`;
+        });
+        
+        row.innerHTML = `
+            <div class="row g-3 align-items-center">
+                <div class="col-auto">
+                    <div class="row-number">${rowCount}</div>
+                </div>
+                <div class="col-md-4">
+                    <select class="form-select form-control-custom" name="worker_type[]" required onchange="updateSummary()">
+                        ${optionsHtml}
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-people"></i></span>
+                        <input type="number" class="form-control form-control-custom" name="workers_needed[]" 
+                               min="1" max="50" placeholder="Count" required onchange="updateSummary()" oninput="updateSummary()">
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="input-group">
+                        <span class="input-group-text">₹</span>
+                        <input type="number" class="form-control form-control-custom" name="wage_per_day[]" 
+                               min="100" step="50" placeholder="Wage/day" required onchange="updateSummary()" oninput="updateSummary()">
+                    </div>
+                </div>
+                <div class="col-auto">
+                    <button type="button" class="btn btn-outline-danger btn-remove-row" onclick="removeWorkerTypeRow(${rowCount})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+            </div>
+        `;
+        
+        container.appendChild(row);
+        updateRowNumbers();
+        updateSummary();
+    }
+    
+    function removeWorkerTypeRow(id) {
+        const row = document.getElementById('workerRow' + id);
+        if (row) {
+            row.remove();
+            updateRowNumbers();
+            updateSummary();
+        }
+    }
+    
+    function updateRowNumbers() {
+        const rows = document.querySelectorAll('.worker-type-row');
+        rows.forEach((row, index) => {
+            const numberDiv = row.querySelector('.row-number');
+            if (numberDiv) {
+                numberDiv.textContent = index + 1;
+            }
+        });
+    }
+    
+    function updateSummary() {
+        const types = document.querySelectorAll('select[name="worker_type[]"]');
+        const counts = document.querySelectorAll('input[name="workers_needed[]"]');
+        const wages = document.querySelectorAll('input[name="wage_per_day[]"]');
+        
+        let totalWorkers = 0;
+        let summaryHtml = '';
+        let hasData = false;
+        
+        for (let i = 0; i < types.length; i++) {
+            const type = types[i].value;
+            const count = parseInt(counts[i].value) || 0;
+            const wage = parseFloat(wages[i].value) || 0;
+            
+            if (type && count > 0) {
+                hasData = true;
+                totalWorkers += count;
+                const dailyCost = count * wage;
+                summaryHtml += `
+                    <div class="summary-item">
+                        <span>${type} × ${count}</span>
+                        <span>₹${wage}/day = ₹${dailyCost}/day</span>
+                    </div>
+                `;
+            }
+        }
+        
+        // Calculate total daily cost
+        let totalDailyCost = 0;
+        for (let i = 0; i < counts.length; i++) {
+            const count = parseInt(counts[i].value) || 0;
+            const wage = parseFloat(wages[i].value) || 0;
+            totalDailyCost += count * wage;
+        }
+        
+        if (hasData) {
+            summaryHtml += `
+                <div class="summary-item mt-2">
+                    <span><strong>Total Workers</strong></span>
+                    <span><strong>${totalWorkers}</strong></span>
+                </div>
+                <div class="summary-item">
+                    <span><strong>Total Daily Cost</strong></span>
+                    <span><strong>₹${totalDailyCost}</strong></span>
+                </div>
+            `;
+        }
+        
+        document.getElementById('totalWorkersCount').textContent = totalWorkers + ' workers';
+        document.getElementById('summaryContent').innerHTML = summaryHtml;
+        document.getElementById('summaryCard').style.display = hasData ? 'block' : 'none';
+    }
+    
+    // Add first row on page load
+    addWorkerTypeRow();
+    
+    // Form validation
+    document.getElementById('createRequestForm').addEventListener('submit', function(e) {
+        const types = document.querySelectorAll('select[name="worker_type[]"]');
+        let hasValidRow = false;
+        
+        types.forEach(type => {
+            if (type.value) hasValidRow = true;
+        });
+        
+        if (!hasValidRow) {
+            e.preventDefault();
+            alert('Please add at least one worker type');
+        }
+    });
+</script>
+{% endblock %}

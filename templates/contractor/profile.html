@@ -1,0 +1,73 @@
+{% extends 'contractor/base.html' %}
+
+{% block title %}Profile - DailyHands{% endblock %}
+
+{% block page_content %}
+<div class="page-header animate-fade-in">
+    <h1 class="page-title">My Profile</h1>
+    <p class="page-subtitle">Manage your account information</p>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-4 animate-fade-in" style="animation-delay: 0.1s;">
+        <div class="glass-card p-4 text-center">
+            <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mx-auto mb-3" 
+                 style="width: 100px; height: 100px; font-size: 2.5rem;">
+                {{ user.name[0] }}
+            </div>
+            <h4>{{ user.name }}</h4>
+            <p class="text-muted mb-1"><i class="bi bi-envelope me-2"></i>{{ user.email }}</p>
+            <p class="text-muted mb-1"><i class="bi bi-telephone me-2"></i>{{ user.phone }}</p>
+            <p class="text-muted"><i class="bi bi-geo-alt me-2"></i>{{ user.city }}, {{ user.area }}</p>
+            <span class="badge bg-primary">Contractor</span>
+        </div>
+    </div>
+    
+    <div class="col-lg-8 animate-fade-in" style="animation-delay: 0.2s;">
+        <div class="glass-card p-4">
+            <h5 class="mb-4"><i class="bi bi-pencil-square me-2"></i>Edit Profile</h5>
+            
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Full Name</label>
+                        <input type="text" class="form-control form-control-custom" name="name" 
+                               value="{{ user.name }}" required>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Email</label>
+                        <input type="email" class="form-control form-control-custom" value="{{ user.email }}" disabled>
+                        <small class="text-muted">Email cannot be changed</small>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Phone</label>
+                        <input type="tel" class="form-control form-control-custom" name="phone" 
+                               value="{{ user.phone }}" required>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">City</label>
+                        <input type="text" class="form-control form-control-custom" name="city" 
+                               value="{{ user.city }}" required>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <label class="form-label fw-semibold">Area</label>
+                        <input type="text" class="form-control form-control-custom" name="area" 
+                               value="{{ user.area }}">
+                    </div>
+                    
+                    <div class="col-12 mt-4">
+                        <button type="submit" class="btn btn-primary-custom">
+                            <i class="bi bi-check-lg me-2"></i>Save Changes
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
