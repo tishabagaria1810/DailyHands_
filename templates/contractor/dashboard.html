@@ -2,6 +2,8 @@
 
 {% block title %}Dashboard - DailyHands{% endblock %}
 
+{% set export_url = url_for('contractor_export_report') %}
+
 {% block page_content %}
 <div class="page-header animate-fade-in">
     <h1 class="page-title">Welcome back, {{ session.name }}!</h1>
@@ -46,20 +48,25 @@
         <div class="glass-card p-4">
             <h5 class="mb-4"><i class="bi bi-lightning me-2"></i>Quick Actions</h5>
             <div class="row g-3">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <a href="{{ url_for('create_request') }}" class="btn btn-primary-custom w-100 py-3">
                         <i class="bi bi-plus-circle me-2"></i>Create New Request
                     </a>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <a href="{{ url_for('contractor_requests') }}" class="btn btn-outline-custom w-100 py-3">
                         <i class="bi bi-list-task me-2"></i>View All Requests
                     </a>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <a href="{{ url_for('contractor_profile') }}" class="btn btn-outline-custom w-100 py-3">
                         <i class="bi bi-person-gear me-2"></i>Edit Profile
                     </a>
+                </div>
+                <div class="col-md-3">
+                    <button type="button" class="btn btn-outline-custom w-100 py-3" data-bs-toggle="modal" data-bs-target="#exportReportModal">
+                        <i class="bi bi-file-earmark-arrow-down me-2"></i>Export Report
+                    </button>
                 </div>
             </div>
         </div>
@@ -129,6 +136,10 @@
         </div>
     </div>
 </div>
+
+<!-- Export Report Modal -->
+{% include 'components/export_report_modal.html' %}
+
 {% endblock %}
 
 {% block extra_js %}

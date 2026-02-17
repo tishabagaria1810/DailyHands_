@@ -35,7 +35,19 @@ def login_required(role=None):
                 return redirect(url_for('login'))
             if role and session.get('role') != role:
                 return redirect(url_for('login'))
-            return f(*args, **kwargs)
+            
+            # Execute the protected route
+            response = f(*args, **kwargs)
+            
+            # Add cache prevention headers to prevent back-button access
+            if isinstance(response, str):
+                response = app.make_response(response)
+            
+            response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+            response.headers['Pragma'] = 'no-cache'
+            response.headers['Expires'] = '0'
+            
+            return response
         return decorated_function
     return decorator
 
@@ -282,7 +294,12 @@ def login():
 @app.route('/logout')
 def logout():
     session.clear()
-    return redirect(url_for('landing'))
+    response = redirect(url_for('login'))
+    # Add cache prevention headers to logout response
+    response.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
+    response.headers['Pragma'] = 'no-cache'
+    response.headers['Expires'] = '0'
+    return response
 
 # ============ FORGOT PASSWORD ROUTES ============
 @app.route('/forgot-password', methods=['GET', 'POST'])
@@ -635,6 +652,43 @@ def contractor_profile():
     user = cursor.fetchone()
     conn.close()
     return render_template('contractor/profile.html', user=user)
+
+@app.route('/contractor/export-report', methods=['POST'])
+@login_required(role='contractor')
+def contractor_export_report():
+    """Export contractor report as PDF or CSV"""
+    from reports import (
+        get_contractor_report_data, 
+        generate_contractor_pdf, 
+        generate_contractor_csv
+    )
+    
+    # Get form data
+    report_format = request.form.get('format', 'pdf')
+    period_type = request.form.get('period_type', 'default')
+    start_date = request.form.get('start_date') if period_type == 'custom' else None
+    end_date = request.form.get('end_date') if period_type == 'custom' else None
+    
+    # Get report data
+    data = get_contractor_report_data(session['user_id'], start_date, end_date)
+    user_name = session['name']
+    
+    # Generate report based on format
+    if report_format == 'csv':
+        report_buffer = generate_contractor_csv(data, user_name)
+        filename = f"DailyHands_Contractor_Report_{data['start_date']}_to_{data['end_date']}.csv"
+        mimetype = 'text/csv'
+    else:  # pdf
+        report_buffer = generate_contractor_pdf(data, user_name)
+        filename = f"DailyHands_Contractor_Report_{data['start_date']}_to_{data['end_date']}.pdf"
+        mimetype = 'application/pdf'
+    
+    return send_file(
+        report_buffer,
+        mimetype=mimetype,
+        as_attachment=True,
+        download_name=filename
+    )
 
 
 # ============ AGENCY ROUTES ============
@@ -1309,6 +1363,43 @@ def agency_profile():
     
     conn.close()
     return render_template('agency/profile.html', agency=agency, rating_info=rating_info)
+
+@app.route('/agency/export-report', methods=['POST'])
+@login_required(role='agency')
+def agency_export_report():
+    """Export agency report as PDF or CSV"""
+    from reports import (
+        get_agency_report_data, 
+        generate_agency_pdf, 
+        generate_agency_csv
+    )
+    
+    # Get form data
+    report_format = request.form.get('format', 'pdf')
+    period_type = request.form.get('period_type', 'default')
+    start_date = request.form.get('start_date') if period_type == 'custom' else None
+    end_date = request.form.get('end_date') if period_type == 'custom' else None
+    
+    # Get report data
+    data = get_agency_report_data(session['user_id'], start_date, end_date)
+    agency_name = session['name']
+    
+    # Generate report based on format
+    if report_format == 'csv':
+        report_buffer = generate_agency_csv(data, agency_name)
+        filename = f"DailyHands_Agency_Report_{data['start_date']}_to_{data['end_date']}.csv"
+        mimetype = 'text/csv'
+    else:  # pdf
+        report_buffer = generate_agency_pdf(data, agency_name)
+        filename = f"DailyHands_Agency_Report_{data['start_date']}_to_{data['end_date']}.pdf"
+        mimetype = 'application/pdf'
+    
+    return send_file(
+        report_buffer,
+        mimetype=mimetype,
+        as_attachment=True,
+        download_name=filename
+    )
 
 
 # ============ API ROUTES (FETCH API) ============
