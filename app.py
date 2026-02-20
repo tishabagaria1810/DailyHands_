@@ -83,10 +83,11 @@ def send_sms_otp(phone, otp):
     return True
 
 # Send email (prints to console only)
-def send_email(to_email, subject, body):
+def send_email(to_email, subject, body,otp):
     print(f"\n{'='*60}")
     print(f"📧 Email to {to_email}")
     print(f"Subject: {subject}")
+    print(f"📱 OTP for {to_email}: {otp}")
     print(f"{'='*60}\n")
     return True
 
@@ -160,8 +161,6 @@ def run_background_checks():
     # Schedule next check in 1 hour
     threading.Timer(3600, run_background_checks).start()
 
-# Start background checks (commented out to avoid threading issues in debug mode)
-# threading.Timer(10, run_background_checks).start()
 
 def login_required(role=None):
     def decorator(f):
@@ -247,18 +246,6 @@ def is_phone_unique(phone, exclude_table=None, exclude_id=None):
 @app.route('/')
 def landing():
     return render_template('landing.html')
-
-# ============ PREVIEW ROUTE (UI KIT INTEGRATION - PHASE 1) ============
-# This route is completely isolated and does NOT affect production code
-# NO authentication, NO database, NO session - pure static preview only
-@app.route('/preview/dashboard')
-def preview_dashboard():
-    """
-    Static UI preview for third-party dashboard integration.
-    This is a DESIGN REFERENCE ONLY - no backend logic connected.
-    Safe to access without login for visual inspection.
-    """
-    return render_template('preview_dashboard.html')
 
 # ============ REAL-TIME VALIDATION API ============
 @app.route('/api/check-availability', methods=['POST'])
@@ -636,7 +623,7 @@ def forgot_password():
                 </body>
                 </html>
                 """
-                send_email(user['email'], subject, body)
+                send_email(user['email'], subject, body, otp)
                 return jsonify({'success': True, 'message': 'OTP sent to your email', 'name': user['name'], 'debug_otp': otp})
             else:
                 send_sms_otp(user['phone'], otp)
@@ -1107,42 +1094,6 @@ def contractor_payment(request_id):
             """, (req['agency_id'], request_id, commission, late_penalty))
         
         conn.commit()
-        
-        # Send email to agency with payment confirmation
-        try:
-            cursor.execute("SELECT email FROM agencies WHERE id = ?", (req['agency_id'],))
-            agency_email = cursor.fetchone()['email']
-            
-            cursor.execute("""
-                SELECT COUNT(CASE WHEN status = 'Present' THEN 1 END) as present_count,
-                       COUNT(CASE WHEN status = 'Absent' THEN 1 END) as absent_count
-                FROM attendance WHERE request_id = ?
-            """, (request_id,))
-            attendance_summary = cursor.fetchone()
-            
-            subject = f"Payment Received - {req['title']}"
-            body = f"""
-            <html>
-            <body>
-                <h2>Payment Received</h2>
-                <p>Hello {req['agency_name']},</p>
-                <p>Payment has been received for the request: <strong>{req['title']}</strong></p>
-                <hr>
-                <p><strong>Workers Present:</strong> {attendance_summary['present_count']}</p>
-                <p><strong>Workers Absent:</strong> {attendance_summary['absent_count']}</p>
-                <p><strong>Worker Wages:</strong> ₹{worker_wages}</p>
-                <p><strong>Agency Commission:</strong> ₹{commission}</p>
-                <p><strong>Late Penalty:</strong> ₹{late_penalty}</p>
-                <p><strong>Total Amount Paid:</strong> ₹{total_amount}</p>
-                <hr>
-                <p>Thank you for your service!</p>
-            </body>
-            </html>
-            """
-            send_email(agency_email, subject, body)
-        except Exception as e:
-            print(f"Email notification error: {e}")
-        
         conn.close()
         flash('Payment successful! Your payment has been processed.', 'success')
         return redirect(url_for('contractor_request_detail', request_id=request_id))
@@ -1378,36 +1329,6 @@ def accept_request(request_id):
         """, (agency_id, request_id))
         
         conn.commit()
-        
-        # Send email to agency with request details
-        try:
-            subject = f"Request Accepted - {req['title']}"
-            body = f"""
-            <html>
-            <body>
-                <h2>Request Accepted Successfully</h2>
-                <p>Hello {agency_info['name']},</p>
-                <p>You have successfully accepted the following work request:</p>
-                <hr>
-                <p><strong>Request Title:</strong> {req['title']}</p>
-                <p><strong>Contractor:</strong> {req['contractor_name']}</p>
-                <p><strong>Location:</strong> {req['contractor_city']}, {req['contractor_area'] or ''}</p>
-                <p><strong>Start Date:</strong> {req['start_date']}</p>
-                <p><strong>Duration:</strong> {req['expected_duration']} days</p>
-                <p><strong>Workers Needed:</strong> {req['workers_needed']}</p>
-                <p><strong>Worker Type:</strong> {req['worker_type']}</p>
-                <p><strong>Wage per Day:</strong> ₹{req['wage_per_day']}</p>
-                <p><strong>Your Commission:</strong> ₹{agency_info['commission_per_worker']} per worker</p>
-                <hr>
-                <p>Please assign workers before the start date.</p>
-                <p>Thank you for using DailyHands!</p>
-            </body>
-            </html>
-            """
-            send_email(agency_info['email'], subject, body)
-        except Exception as e:
-            print(f"Email notification error: {e}")
-        
         conn.close()
         flash('Request accepted successfully!', 'success')
         return redirect(url_for('agency_my_requests'))
@@ -1823,7 +1744,7 @@ def mark_attendance(request_id):
     
     cursor.execute("""
         SELECT * FROM work_requests 
-        WHERE id = ? AND agency_id = ? AND status = 'Assigned'
+        WHERE id = ? AND agency_id = ? AND status IN ('Assigned', 'Completed_Payment_Pending', 'Completed_Paid')
     """, (request_id, session['user_id']))
     req = cursor.fetchone()
     

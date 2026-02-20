@@ -116,10 +116,13 @@
 
 {% block extra_js %}
 <script>
-    // Set date constraints
+    // Set date constraints - allow selecting any date from start date onwards
     const dateInput = document.querySelector('input[name="date"]');
     const startDate = '{{ req.start_date }}';
     dateInput.min = startDate;
-    dateInput.max = new Date().toISOString().split('T')[0];
+    // Remove max date constraint to allow selecting any date
+    
+    // Set default date to today
+    dateInput.value = new Date().toISOString().split('T')[0];
 </script>
 {% endblock %}
