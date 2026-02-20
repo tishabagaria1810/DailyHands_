@@ -140,12 +140,12 @@
                 <p class="text-muted small">You will be responsible for assigning workers to this request.</p>
             </div>
             <div class="modal-footer border-0 justify-content-center">
-                <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal">
+                <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal" style="min-width: 140px;">
                     <i class="bi bi-x-lg me-2"></i>Cancel
                 </button>
                 <form method="POST" id="acceptRequestForm" style="display: inline;">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <button type="submit" class="btn btn-success">
+                    <button type="submit" class="btn btn-success" style="min-width: 140px;">
                         <i class="bi bi-check-circle me-2"></i>Yes, Accept
                     </button>
                 </form>

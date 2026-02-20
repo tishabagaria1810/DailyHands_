@@ -283,9 +283,16 @@
                 
                 <div class="form-floating">
                     <input type="text" class="form-control" id="name" name="name" placeholder="Full Name" required>
-                    <label for="name"><i class="bi bi-person me-2"></i>Full Name / Agency Name</label>
+                    <label for="name"><i class="bi bi-person me-2"></i><span id="nameLabel">Full Name / Agency Name</span></label>
                 </div>
                 <div class="validation-feedback" id="nameFeedback"></div>
+                
+                <!-- Commission field (only for agencies) -->
+                <div class="form-floating" id="commissionField" style="display: none;">
+                    <input type="number" class="form-control" id="commission_per_worker" name="commission_per_worker" 
+                           placeholder="Commission" min="0" step="0.01" value="0">
+                    <label for="commission_per_worker"><i class="bi bi-currency-rupee me-2"></i>Commission per Worker (₹)</label>
+                </div>
                 
                 <div class="form-floating">
                     <input type="email" class="form-control" id="email" name="email" placeholder="Email" required>
@@ -343,8 +350,19 @@
         document.querySelector(`[data-role="${role}"]`).classList.add('active');
         document.getElementById('roleInput').value = role;
         
+        // Show/hide commission field based on role
+        const commissionField = document.getElementById('commissionField');
+        const nameLabel = document.getElementById('nameLabel');
+        if (role === 'agency') {
+            commissionField.style.display = 'block';
+            nameLabel.textContent = 'Agency Name';
+        } else {
+            commissionField.style.display = 'none';
+            nameLabel.textContent = 'Full Name';
+        }
+        
         // Clear all input fields
-        const inputFields = ['name', 'email', 'phone', 'city', 'area', 'password'];
+        const inputFields = ['name', 'email', 'phone', 'city', 'area', 'password', 'commission_per_worker'];
         inputFields.forEach(fieldId => {
             const input = document.getElementById(fieldId);
             if (input) {

@@ -1,0 +1,196 @@
+{% extends 'contractor/base.html' %}
+
+{% block title %}Payment - DailyHands{% endblock %}
+
+{% block page_content %}
+<div class="page-header animate-fade-in">
+    <h1 class="page-title">Complete Payment</h1>
+    <p class="page-subtitle">{{ req.title }}</p>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="glass-card p-4 animate-fade-in">
+            <h4 class="mb-4">Payment Details</h4>
+            
+            {% if error %}
+            <div class="alert alert-danger">
+                <i class="bi bi-exclamation-circle me-2"></i>{{ error }}
+            </div>
+            {% endif %}
+            
+            <!-- Payment Summary -->
+            <div class="mb-4 p-3" style="background: #f8f9fa; border-radius: 12px;">
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Worker Wages:</span>
+                    <strong>₹{{ worker_wages }}</strong>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span>Agency Commission ({{ req.workers_needed }} workers × ₹{{ req.commission_per_worker }}):</span>
+                    <strong>₹{{ commission }}</strong>
+                </div>
+                {% if late_penalty > 0 %}
+                <div class="d-flex justify-content-between mb-2 text-danger">
+                    <span>Late Payment Penalty:</span>
+                    <strong>₹{{ late_penalty }}</strong>
+                </div>
+                {% endif %}
+                <hr>
+                <div class="d-flex justify-content-between">
+                    <strong>Total Amount:</strong>
+                    <h4 class="text-primary mb-0">₹{{ total_amount }}</h4>
+                </div>
+            </div>
+            
+            <form method="POST" id="paymentForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                
+                <!-- Payment Method Selection -->
+                <div class="mb-4">
+                    <label class="form-label">Select Payment Method</label>
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="payment-method-card" onclick="selectPaymentMethod('upi')">
+                                <input type="radio" name="payment_method" value="upi" id="upi" required>
+                                <label for="upi" class="w-100">
+                                    <i class="bi bi-phone fs-2 text-primary"></i>
+                                    <div class="mt-2">UPI Payment</div>
+                                </label>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="payment-method-card" onclick="selectPaymentMethod('card')">
+                                <input type="radio" name="payment_method" value="card" id="card" required>
+                                <label for="card" class="w-100">
+                                    <i class="bi bi-credit-card fs-2 text-primary"></i>
+                                    <div class="mt-2">Card Payment</div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- UPI Details -->
+                <div id="upiDetails" class="payment-details" style="display: none;">
+                    <div class="mb-3">
+                        <label for="upiId" class="form-label">UPI ID</label>
+                        <input type="text" class="form-control" id="upiId" name="payment_details" 
+                               placeholder="yourname@upi" pattern="[\w.-]+@[\w.-]+">
+                        <small class="text-muted">Format: username@provider</small>
+                    </div>
+                </div>
+                
+                <!-- Card Details -->
+                <div id="cardDetails" class="payment-details" style="display: none;">
+                    <div class="mb-3">
+                        <label for="cardNumber" class="form-label">Card Number</label>
+                        <input type="text" class="form-control" id="cardNumber" name="payment_details" 
+                               placeholder="1234 5678 9012 3456" maxlength="19">
+                        <small class="text-muted">16-digit card number</small>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>Note:</strong> This is a mock payment. The amount is locked and cannot be edited.
+                </div>
+                
+                <button type="submit" class="btn btn-primary-custom btn-lg w-100">
+                    <i class="bi bi-check-circle me-2"></i>Complete Payment - ₹{{ total_amount }}
+                </button>
+            </form>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="glass-card p-4 animate-fade-in" style="animation-delay: 0.1s;">
+            <h5 class="mb-3">Request Summary</h5>
+            <div class="mb-2">
+                <small class="text-muted">Agency</small>
+                <div>{{ req.agency_name }}</div>
+            </div>
+            <div class="mb-2">
+                <small class="text-muted">Duration</small>
+                <div>{{ req.expected_duration }} days</div>
+            </div>
+            <div class="mb-2">
+                <small class="text-muted">Workers</small>
+                <div>{{ req.workers_needed }}</div>
+            </div>
+            <div class="mb-2">
+                <small class="text-muted">Start Date</small>
+                <div>{{ req.start_date }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .payment-method-card {
+        border: 2px solid #e2e8f0;
+        border-radius: 12px;
+        padding: 2rem;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    
+    .payment-method-card:hover {
+        border-color: var(--primary);
+        background: rgba(99, 102, 241, 0.05);
+    }
+    
+    .payment-method-card input[type="radio"] {
+        display: none;
+    }
+    
+    .payment-method-card input[type="radio"]:checked + label {
+        color: var(--primary);
+    }
+    
+    .payment-method-card input[type="radio"]:checked ~ * {
+        border-color: var(--primary);
+    }
+    
+    .payment-method-card.active {
+        border-color: var(--primary);
+        background: rgba(99, 102, 241, 0.1);
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function selectPaymentMethod(method) {
+        // Hide all payment details
+        document.querySelectorAll('.payment-details').forEach(el => el.style.display = 'none');
+        
+        // Remove active class from all cards
+        document.querySelectorAll('.payment-method-card').forEach(el => el.classList.remove('active'));
+        
+        // Show selected payment details
+        if (method === 'upi') {
+            document.getElementById('upiDetails').style.display = 'block';
+            document.getElementById('upi').checked = true;
+            document.getElementById('upi').parentElement.classList.add('active');
+            document.getElementById('upiId').required = true;
+            document.getElementById('cardNumber').required = false;
+        } else {
+            document.getElementById('cardDetails').style.display = 'block';
+            document.getElementById('card').checked = true;
+            document.getElementById('card').parentElement.classList.add('active');
+            document.getElementById('cardNumber').required = true;
+            document.getElementById('upiId').required = false;
+        }
+    }
+    
+    // Format card number input
+    document.getElementById('cardNumber').addEventListener('input', function(e) {
+        let value = e.target.value.replace(/\s/g, '').replace(/[^0-9]/g, '');
+        let formattedValue = value.match(/.{1,4}/g)?.join(' ') || value;
+        e.target.value = formattedValue;
+    });
+</script>
+{% endblock %}

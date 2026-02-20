@@ -3,6 +3,19 @@
 {% block title %}Request Details - DailyHands{% endblock %}
 
 {% block page_content %}
+<!-- Flash Messages -->
+{% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+        {% for category, message in messages %}
+        <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show animate-fade-in" role="alert">
+            <i class="bi bi-{{ 'check-circle' if category == 'success' else 'exclamation-triangle' }} me-2"></i>
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+        {% endfor %}
+    {% endif %}
+{% endwith %}
+
 <div class="page-header animate-fade-in">
     <nav aria-label="breadcrumb">
         <ol class="breadcrumb">
@@ -117,26 +130,65 @@
         <div class="glass-card p-4 mb-4">
             <h5 class="mb-4"><i class="bi bi-clock-history me-2"></i>Request Timeline</h5>
             <div class="timeline">
+                <!-- Request Created -->
                 <div class="timeline-item completed">
                     <strong>Request Created</strong>
                     <p class="text-muted small mb-0">{{ req.created_at }}</p>
                 </div>
-                {% if req.status in ['Accepted', 'Assigned', 'Completed'] %}
+                
+                <!-- Agency Accepted -->
+                {% if req.status in ['Accepted', 'Assigned', 'Completed_Payment_Pending', 'Completed_Paid'] %}
                 <div class="timeline-item completed">
                     <strong>Agency Accepted</strong>
                     <p class="text-muted small mb-0">{{ req.agency_name }}</p>
                 </div>
                 {% endif %}
-                {% if req.status in ['Assigned', 'Completed'] %}
+                
+                <!-- Workers Assigned -->
+                {% if req.status in ['Assigned', 'Completed_Payment_Pending', 'Completed_Paid'] %}
                 <div class="timeline-item completed">
                     <strong>Workers Assigned</strong>
                     <p class="text-muted small mb-0">{{ workers|length }} workers assigned</p>
                 </div>
                 {% endif %}
-                {% if req.status == 'Completed' %}
+                
+                <!-- Work Completed -->
+                {% if req.status in ['Completed_Payment_Pending', 'Completed_Paid'] %}
                 <div class="timeline-item completed">
-                    <strong>Completed</strong>
-                    <p class="text-muted small mb-0">{{ req.completed_at }}</p>
+                    <strong>Work Completed</strong>
+                    <p class="text-muted small mb-0">{{ req.completed_at or 'Completed' }}</p>
+                </div>
+                {% endif %}
+                
+                <!-- Payment Pending -->
+                {% if req.status == 'Completed_Payment_Pending' %}
+                <div class="timeline-item pending">
+                    <strong>Payment Pending</strong>
+                    <p class="text-muted small mb-0">Awaiting payment</p>
+                </div>
+                {% endif %}
+                
+                <!-- Payment Completed -->
+                {% if req.status == 'Completed_Paid' %}
+                <div class="timeline-item completed">
+                    <strong>Payment Completed</strong>
+                    <p class="text-muted small mb-0">Payment successful</p>
+                </div>
+                {% endif %}
+                
+                <!-- Cancelled -->
+                {% if req.status == 'Cancelled' %}
+                <div class="timeline-item cancelled">
+                    <strong>Request Cancelled</strong>
+                    <p class="text-muted small mb-0">Request was cancelled</p>
+                </div>
+                {% endif %}
+                
+                <!-- Rejected -->
+                {% if req.status == 'Rejected' %}
+                <div class="timeline-item cancelled">
+                    <strong>Request Rejected</strong>
+                    <p class="text-muted small mb-0">Agency did not assign workers</p>
                 </div>
                 {% endif %}
             </div>

@@ -72,12 +72,12 @@
                 </div>
                 <div class="col-md-4">
                     <div class="d-flex align-items-center">
-                        <div class="rounded-circle bg-secondary bg-opacity-10 p-3 me-3">
-                            <i class="bi bi-currency-rupee text-secondary"></i>
+                        <div class="rounded-circle bg-primary bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-calendar-event text-primary"></i>
                         </div>
                         <div>
-                            <small class="text-muted">Wage/Day</small>
-                            <div class="fw-semibold">₹{{ req.wage_per_day }}</div>
+                            <small class="text-muted">Start Date</small>
+                            <div class="fw-semibold">{{ req.start_date }}</div>
                         </div>
                     </div>
                 </div>
@@ -89,6 +89,17 @@
                         <div>
                             <small class="text-muted">Duration</small>
                             <div class="fw-semibold">{{ req.expected_duration }} days</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="d-flex align-items-center">
+                        <div class="rounded-circle bg-secondary bg-opacity-10 p-3 me-3">
+                            <i class="bi bi-currency-rupee text-secondary"></i>
+                        </div>
+                        <div>
+                            <small class="text-muted">Wage/Day</small>
+                            <div class="fw-semibold">₹{{ req.wage_per_day }}</div>
                         </div>
                     </div>
                 </div>
@@ -229,6 +240,39 @@
             <a href="{{ url_for('agency_request_earnings', request_id=req.id) }}" class="btn btn-outline-custom w-100 mt-3">
                 <i class="bi bi-bar-chart me-2"></i>View Detailed Report
             </a>
+        </div>
+        {% endif %}
+        
+        <!-- Payment Status (Only for Completed_Payment_Pending) -->
+        {% if payment_status %}
+        <div class="glass-card p-4 mb-4 animate-fade-in" style="animation-delay: 0.3s;">
+            <h5 class="mb-3"><i class="bi bi-clock-history me-2"></i>Payment Status</h5>
+            <div class="d-flex justify-content-between mb-2">
+                <span class="text-muted">Payment Due Date</span>
+                <strong>{{ payment_status.due_date }}</strong>
+            </div>
+            {% if payment_status.is_overdue %}
+            <div class="d-flex justify-content-between mb-2">
+                <span class="text-muted">Days Overdue</span>
+                <strong class="text-danger">{{ payment_status.days_overdue }} days</strong>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+                <span class="text-muted">Current Penalty</span>
+                <strong class="text-warning">₹{{ payment_status.penalty }}</strong>
+            </div>
+            {% else %}
+            <div class="alert alert-success mb-2 py-2 px-3">
+                <small><i class="bi bi-check-circle me-1"></i>Payment not yet overdue</small>
+            </div>
+            {% endif %}
+            <hr>
+            <div class="d-flex justify-content-between">
+                <span class="fw-semibold">Expected Payment</span>
+                <strong class="text-primary">₹{{ payment_status.expected_payment }}</strong>
+            </div>
+            <small class="text-muted d-block mt-2">
+                <i class="bi bi-info-circle me-1"></i>Penalty: ₹100 per day after due date
+            </small>
         </div>
         {% endif %}
         

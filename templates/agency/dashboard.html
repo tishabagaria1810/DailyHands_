@@ -2,8 +2,6 @@
 
 {% block title %}Agency Dashboard - DailyHands{% endblock %}
 
-{% set export_url = url_for('agency_export_report') %}
-
 {% block page_content %}
 <div class="page-header animate-fade-in">
     <h1 class="page-title">Welcome back, {{ session.name }}!</h1>
@@ -70,13 +68,6 @@
                     <a href="{{ url_for('agency_earnings') }}" class="btn btn-outline-custom w-100 py-3">
                         <i class="bi bi-currency-rupee me-2"></i>View Earnings
                     </a>
-                </div>
-            </div>
-            <div class="row g-3 mt-2">
-                <div class="col-md-12">
-                    <button type="button" class="btn btn-outline-custom w-100 py-3" data-bs-toggle="modal" data-bs-target="#exportReportModal">
-                        <i class="bi bi-file-earmark-arrow-down me-2"></i>Export Report
-                    </button>
                 </div>
             </div>
         </div>
@@ -146,9 +137,6 @@
         </div>
     </div>
 </div>
-
-<!-- Export Report Modal -->
-{% include 'components/export_report_modal.html' %}
 
 {% endblock %}
 

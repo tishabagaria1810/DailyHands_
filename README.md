@@ -24,9 +24,9 @@ The system is designed for **clarity, accountability, and scalability**.
 
 - Role-based authentication (Contractor & Agency)
 - Session-based access control with route protection
-- Secure password hashing (pbkdf2:sha256 via Werkzeug)
+- Simple shift cipher password encryption (shift by +3)
 - CSRF protection on all forms (Flask-WTF)
-- Login, logout, and password reset (OTP simulated)
+- Login, logout, and password reset (OTP via SMS/Email)
 - Unique constraints on email, phone, and agency name
 - Backwards-compatible password migration
 
@@ -111,7 +111,7 @@ The system is designed for **clarity, accountability, and scalability**.
 - **Python 3.x**
 - **Flask 3.0.0**
 - **Flask-WTF** (CSRF protection)
-- **Werkzeug** (password hashing)
+- **Twilio** (SMS OTP)
 - **SQLite3** (relational database)
 
 ### Frontend

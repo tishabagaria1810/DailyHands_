@@ -22,6 +22,8 @@
         <button class="btn btn-sm btn-outline-custom filter-btn" data-filter="accepted">Accepted</button>
         <button class="btn btn-sm btn-outline-custom filter-btn" data-filter="assigned">Assigned</button>
         <button class="btn btn-sm btn-outline-custom filter-btn" data-filter="completed">Completed</button>
+        <button class="btn btn-sm btn-outline-custom filter-btn" data-filter="rejected">Rejected</button>
+        <button class="btn btn-sm btn-outline-custom filter-btn" data-filter="cancelled">Cancelled</button>
     </div>
 </div>
 
@@ -32,9 +34,9 @@
         {% set req = item.request %}
         {% set worker_types = item.worker_types %}
         <div class="col-md-6 col-lg-4 animate-fade-in request-card" data-status="{{ req.status|lower }}" style="animation-delay: {{ loop.index * 0.1 }}s;">
-            <div class="glass-card p-4 h-100">
+            <div class="glass-card p-4 h-100 d-flex flex-column">
                 <div class="d-flex justify-content-between align-items-start mb-3">
-                    <span class="status-badge status-{{ req.status|lower }}">{{ req.status }}</span>
+                    <span class="status-badge status-{{ req.status|lower }}">{{ req.status|replace('_', ' ') }}</span>
                     <small class="text-muted">{{ req.created_at[:10] }}</small>
                 </div>
                 
@@ -77,15 +79,21 @@
                     {% endif %}
                 </div>
                 
-                <div class="d-flex gap-2">
+                <div class="d-flex gap-2 mt-auto">
+                    {% if req.status == 'Accepted' %}
+                    <button class="btn btn-danger btn-sm" 
+                            onclick="confirmCancelRequest({{ req.id }}, '{{ req.title }}')"
+                            data-bs-toggle="modal" 
+                            data-bs-target="#cancelRequestModal">
+                        <i class="bi bi-x-circle"></i>
+                    </button>
+                    <a href="{{ url_for('assign_workers', request_id=req.id) }}" class="btn btn-success flex-grow-1">
+                        <i class="bi bi-person-plus me-1"></i>Assign
+                    </a>
+                    {% endif %}
                     <a href="{{ url_for('agency_request_detail', request_id=req.id) }}" class="btn btn-primary-custom flex-grow-1">
                         <i class="bi bi-eye me-1"></i>View
                     </a>
-                    {% if req.status == 'Accepted' %}
-                    <a href="{{ url_for('assign_workers', request_id=req.id) }}" class="btn btn-success">
-                        <i class="bi bi-person-plus"></i>
-                    </a>
-                    {% endif %}
                 </div>
             </div>
         </div>
@@ -103,10 +111,42 @@
     </div>
     {% endif %}
 </div>
+
+<!-- Cancel Request Confirmation Modal -->
+<div class="modal fade" id="cancelRequestModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <h5 class="modal-title">
+                    <i class="bi bi-x-circle text-danger me-2"></i>Cancel Request
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <div class="mb-3">
+                    <i class="bi bi-exclamation-triangle text-warning" style="font-size: 4rem;"></i>
+                </div>
+                <h5>Cancel this request?</h5>
+                <p class="text-muted">Request: <strong id="cancelRequestTitle"></strong></p>
+                <p class="text-muted small">This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer border-0 justify-content-center">
+                <button type="button" class="btn btn-outline-custom" data-bs-dismiss="modal" style="min-width: 140px;">
+                    <i class="bi bi-arrow-left me-2"></i>Go Back
+                </button>
+                <button type="button" class="btn btn-danger" onclick="cancelRequestConfirmed()" style="min-width: 140px;">
+                    <i class="bi bi-x-circle me-2"></i>Yes, Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+    let currentCancelRequestId = null;
+    
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', function() {
             document.querySelectorAll('.filter-btn').forEach(b => {
@@ -118,13 +158,57 @@
             
             const filter = this.dataset.filter;
             document.querySelectorAll('.request-card').forEach(card => {
-                if (filter === 'all' || card.dataset.status === filter) {
-                    card.style.display = 'block';
+                const cardStatus = card.dataset.status;
+                let shouldShow = false;
+                
+                if (filter === 'all') {
+                    shouldShow = true;
+                } else if (filter === 'completed') {
+                    // Show both Completed_Payment_Pending and Completed_Paid
+                    shouldShow = (cardStatus === 'completed_payment_pending' || cardStatus === 'completed_paid');
                 } else {
-                    card.style.display = 'none';
+                    shouldShow = (cardStatus === filter);
                 }
+                
+                card.style.display = shouldShow ? 'block' : 'none';
             });
         });
     });
+    
+    // Confirm cancel request (show modal)
+    function confirmCancelRequest(requestId, requestTitle) {
+        currentCancelRequestId = requestId;
+        document.getElementById('cancelRequestTitle').textContent = requestTitle;
+    }
+    
+    // Cancel request confirmed (execute)
+    function cancelRequestConfirmed() {
+        if (!currentCancelRequestId) return;
+        
+        fetch(`/agency/cancel-request/${currentCancelRequestId}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Close modal
+            bootstrap.Modal.getInstance(document.getElementById('cancelRequestModal')).hide();
+            
+            if (data.success) {
+                // Show success message and reload
+                setTimeout(() => {
+                    location.reload();
+                }, 300);
+            } else {
+                alert(data.error);
+            }
+        })
+        .catch(error => {
+            alert('An error occurred. Please try again.');
+        });
+    }
 </script>
 {% endblock %}
